@@ -1,8 +1,26 @@
+# Python virtual environment
 venv/
-data/
+.venv/
+
+# Python cache
 __pycache__/
+*.py[cod]
+
+# Testing cache
 .pytest_cache/
+
+# Temporary files
 scratch/
-*.csv
+
+# Local databases
 *.db
 *.sqlite
+*.sqlite3
+
+# Generated output data
+data/processed/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
