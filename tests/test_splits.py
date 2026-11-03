@@ -10,7 +10,8 @@ def tiny():
 
 def test_cold_start_has_no_leak():
     p = tiny()
-    train, one, both, held = cold_start_splits(p, drug_frac=0.3, seed=1)
+    group_of = {d: i for i, d in enumerate(sorted(set(p["drug_a_id"]) | set(p["drug_b_id"])))}
+    train, one, both, held = cold_start_splits(p, drug_frac=0.3, seed=1, group_of=group_of)
     tr, o, bo = p.iloc[train], p.iloc[one], p.iloc[both]
     assert not (tr["drug_a_id"].isin(held) | tr["drug_b_id"].isin(held)).any()
     assert ((o["drug_a_id"].isin(held).astype(int) + o["drug_b_id"].isin(held).astype(int)) == 1).all()
