@@ -1,0 +1,10 @@
+split,model,n_test,accuracy,balanced_acc,macro_f1
+random,majority,20712,0.747,0.333,0.285
+random,nearest neighbour,20712,0.878,0.761,0.793
+random,xgboost,20712,0.799,0.828,0.715
+one drug unseen,majority,33496,0.746,0.333,0.285
+one drug unseen,nearest neighbour,33496,0.817,0.659,0.682
+one drug unseen,xgboost,33496,0.728,0.629,0.582
+both drugs unseen,majority,4161,0.748,0.333,0.285
+both drugs unseen,nearest neighbour,4161,0.722,0.481,0.489
+both drugs unseen,xgboost,4161,0.676,0.452,0.446
