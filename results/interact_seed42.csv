@@ -1,0 +1,7 @@
+split,model,n_test,balanced_acc,macro_f1,roc_auc,pr_auc
+random,xgboost,41719,0.689,0.688,0.761,0.759
+random,nearest neighbour,41719,0.783,0.782,,
+one drug unseen,xgboost,67215,0.625,0.62,0.683,0.685
+one drug unseen,nearest neighbour,67215,0.704,0.704,,
+both drugs unseen,xgboost,8447,0.57,0.556,0.613,0.608
+both drugs unseen,nearest neighbour,8447,0.62,0.62,,
