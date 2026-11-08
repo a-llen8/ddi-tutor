@@ -1,0 +1,9 @@
+model,split,version,n_test,ece,brier,balanced_acc
+xgboost,one drug unseen,raw,20000,0.028,0.231,0.607
+xgboost,one drug unseen,calibrated,20000,0.032,0.231,0.607
+xgboost,both drugs unseen,raw,8447,0.037,0.241,0.574
+xgboost,both drugs unseen,calibrated,8447,0.047,0.243,0.58
+nearest neighbour,one drug unseen,raw,20000,0.112,0.222,0.681
+nearest neighbour,one drug unseen,calibrated,20000,0.042,0.207,0.683
+nearest neighbour,both drugs unseen,raw,8447,0.178,0.27,0.604
+nearest neighbour,both drugs unseen,calibrated,8447,0.106,0.245,0.607

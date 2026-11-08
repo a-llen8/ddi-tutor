@@ -1,0 +1,79 @@
+model,split,version,bin,n,mean_confidence,actual_positive_rate
+xgboost,one drug unseen,raw,0,11,0.067,0.091
+xgboost,one drug unseen,raw,1,168,0.171,0.125
+xgboost,one drug unseen,raw,2,978,0.262,0.229
+xgboost,one drug unseen,raw,3,4144,0.36,0.37
+xgboost,one drug unseen,raw,4,7336,0.45,0.465
+xgboost,one drug unseen,raw,5,4802,0.543,0.576
+xgboost,one drug unseen,raw,6,1778,0.64,0.719
+xgboost,one drug unseen,raw,7,555,0.741,0.845
+xgboost,one drug unseen,raw,8,175,0.837,0.857
+xgboost,one drug unseen,raw,9,53,0.937,0.906
+xgboost,one drug unseen,calibrated,0,49,0.016,0.041
+xgboost,one drug unseen,calibrated,1,276,0.135,0.152
+xgboost,one drug unseen,calibrated,2,1909,0.258,0.29
+xgboost,one drug unseen,calibrated,3,5206,0.36,0.4
+xgboost,one drug unseen,calibrated,4,3605,0.469,0.476
+xgboost,one drug unseen,calibrated,5,2978,0.54,0.514
+xgboost,one drug unseen,calibrated,6,3408,0.637,0.594
+xgboost,one drug unseen,calibrated,7,1675,0.765,0.711
+xgboost,one drug unseen,calibrated,8,635,0.859,0.839
+xgboost,one drug unseen,calibrated,9,259,0.925,0.873
+xgboost,both drugs unseen,raw,0,2,0.094,0.0
+xgboost,both drugs unseen,raw,1,77,0.171,0.208
+xgboost,both drugs unseen,raw,2,380,0.263,0.313
+xgboost,both drugs unseen,raw,3,2009,0.361,0.403
+xgboost,both drugs unseen,raw,4,3424,0.45,0.481
+xgboost,both drugs unseen,raw,5,1885,0.54,0.587
+xgboost,both drugs unseen,raw,6,507,0.638,0.657
+xgboost,both drugs unseen,raw,7,108,0.742,0.759
+xgboost,both drugs unseen,raw,8,48,0.841,0.854
+xgboost,both drugs unseen,raw,9,7,0.939,1.0
+xgboost,both drugs unseen,calibrated,0,21,0.018,0.143
+xgboost,both drugs unseen,calibrated,1,102,0.133,0.275
+xgboost,both drugs unseen,calibrated,2,842,0.26,0.367
+xgboost,both drugs unseen,calibrated,3,2513,0.36,0.416
+xgboost,both drugs unseen,calibrated,4,1692,0.469,0.487
+xgboost,both drugs unseen,calibrated,5,1335,0.539,0.545
+xgboost,both drugs unseen,calibrated,6,1271,0.633,0.599
+xgboost,both drugs unseen,calibrated,7,482,0.764,0.649
+xgboost,both drugs unseen,calibrated,8,129,0.858,0.76
+xgboost,both drugs unseen,calibrated,9,60,0.92,0.883
+nearest neighbour,one drug unseen,raw,0,2885,0.0,0.219
+nearest neighbour,one drug unseen,raw,1,2303,0.175,0.284
+nearest neighbour,one drug unseen,raw,2,1072,0.228,0.36
+nearest neighbour,one drug unseen,raw,3,2182,0.37,0.36
+nearest neighbour,one drug unseen,raw,4,1569,0.43,0.437
+nearest neighbour,one drug unseen,raw,5,1769,0.571,0.477
+nearest neighbour,one drug unseen,raw,6,1693,0.629,0.586
+nearest neighbour,one drug unseen,raw,7,1266,0.772,0.607
+nearest neighbour,one drug unseen,raw,8,2081,0.826,0.707
+nearest neighbour,one drug unseen,raw,9,3180,0.998,0.843
+nearest neighbour,one drug unseen,calibrated,1,3917,0.15,0.225
+nearest neighbour,one drug unseen,calibrated,2,3005,0.271,0.339
+nearest neighbour,one drug unseen,calibrated,3,2153,0.354,0.382
+nearest neighbour,one drug unseen,calibrated,4,2911,0.471,0.474
+nearest neighbour,one drug unseen,calibrated,5,813,0.558,0.561
+nearest neighbour,one drug unseen,calibrated,6,3050,0.667,0.628
+nearest neighbour,one drug unseen,calibrated,7,364,0.75,0.739
+nearest neighbour,one drug unseen,calibrated,8,3765,0.872,0.834
+nearest neighbour,one drug unseen,calibrated,9,22,1.0,1.0
+nearest neighbour,both drugs unseen,raw,0,1390,0.0,0.301
+nearest neighbour,both drugs unseen,raw,1,1060,0.182,0.382
+nearest neighbour,both drugs unseen,raw,2,416,0.218,0.45
+nearest neighbour,both drugs unseen,raw,3,1012,0.377,0.454
+nearest neighbour,both drugs unseen,raw,4,689,0.42,0.496
+nearest neighbour,both drugs unseen,raw,5,844,0.577,0.464
+nearest neighbour,both drugs unseen,raw,6,725,0.622,0.582
+nearest neighbour,both drugs unseen,raw,7,522,0.78,0.556
+nearest neighbour,both drugs unseen,raw,8,753,0.818,0.614
+nearest neighbour,both drugs unseen,raw,9,1036,1.0,0.756
+nearest neighbour,both drugs unseen,calibrated,1,1717,0.149,0.313
+nearest neighbour,both drugs unseen,calibrated,2,1336,0.268,0.415
+nearest neighbour,both drugs unseen,calibrated,3,1207,0.356,0.467
+nearest neighbour,both drugs unseen,calibrated,4,1264,0.471,0.487
+nearest neighbour,both drugs unseen,calibrated,5,400,0.555,0.552
+nearest neighbour,both drugs unseen,calibrated,6,1252,0.667,0.583
+nearest neighbour,both drugs unseen,calibrated,7,123,0.75,0.602
+nearest neighbour,both drugs unseen,calibrated,8,1137,0.873,0.752
+nearest neighbour,both drugs unseen,calibrated,9,11,1.0,0.909
