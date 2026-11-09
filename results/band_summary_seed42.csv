@@ -1,0 +1,4 @@
+band,n_test,share_documented,mean_score
+Low,8089,0.162,0.167
+Medium,5738,0.564,0.558
+High,6173,0.877,0.885
