@@ -1,0 +1,5 @@
+model,split,version,n_test,ece,brier,balanced_acc
+xgboost,both drugs known,raw,20000,0.09,0.211,0.684
+xgboost,both drugs known,calibrated,20000,0.009,0.2,0.682
+nearest neighbour,both drugs known,raw,20000,0.069,0.158,0.776
+nearest neighbour,both drugs known,calibrated,20000,0.008,0.151,0.784
