@@ -16,6 +16,8 @@ def build_pool(ids):
     b = b[b["Is_discontinued"].astype(str).str.lower() != "true"]
     vals = pd.concat([b["ing1_dd"], b["ing2_dd"]]).dropna().astype(str).str.strip().str.lower()
     counts = vals[vals.isin(set(ids))].value_counts()
+    alone = set(b.loc[b["ing2"].isna(), "ing1_dd"].dropna().astype(str).str.strip().str.lower())
+    counts = counts[counts.index.isin(alone)]
     return list(counts.index), np.sqrt(counts.to_numpy(dtype=float))
 
 
@@ -38,7 +40,8 @@ def random_case(ctx, seed, max_tries=200):
         names = [ctx["names_of"][sorted(ctx["ids"][pool[i]])[0]] for i in pick]
         r = check_case(names, ctx["ids"], ctx["sev"], ctx["names_of"])
         if (r["status"] == "ok" and len(r["drugs"]) == k
-                and r["counts"]["Major"] >= 1 and r["counts"]["no_record"] >= 1):
+                and r["counts"]["Major"] >= 1 and r["counts"]["no_record"] >= 1
+                and r["counts"]["Unknown"] <= 1):
             return names, attempt
     return None, max_tries
 
