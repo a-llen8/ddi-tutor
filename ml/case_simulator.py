@@ -37,7 +37,7 @@ def check_case(names, ids, sev, names_of):
     if len(names) > MAX_DRUGS:
         return {"status": "needs_fix", "messages": [f"Enter at most {MAX_DRUGS} drugs."]}
 
-    drugs, notes, problems = [], [], []
+    drugs, notes, problems, typed = [], [], [], []
     for n in names:
         A, note, prob = resolve(n, ids)
         if prob:
@@ -46,10 +46,12 @@ def check_case(names, ids, sev, names_of):
         if note:
             notes.append(note)
         display = names_of[sorted(A)[0]]
-        if any(A & other for _, other in drugs):
-            notes.append(f"{n.strip()} is the same drug as {display}. Counted once.")
+        earlier = [t for t, (_, other) in zip(typed, drugs) if A & other]
+        if earlier:
+            notes.append(f"{n.strip()} is the same drug as {earlier[0]}. Counted once.")
             continue
         drugs.append((display, A))
+        typed.append(n.strip())
     if problems:
         return {"status": "needs_fix", "messages": problems}
     if len(drugs) < 2:
@@ -79,7 +81,9 @@ def show(r):
     print("Drugs:", ", ".join(r["drugs"]))
     for n in r["notes"]:
         print(n)
-    print(f"{len(r['pairs'])} pairs: Major {c['Major']}, Moderate {c['Moderate']}, "
+    n_pairs = len(r["pairs"])
+    word = "pair" if n_pairs == 1 else "pairs"
+    print(f"{n_pairs} {word}: Major {c['Major']}, Moderate {c['Moderate']}, "
           f"Minor {c['Minor']}, Unknown {c['Unknown']}, no record {c['no_record']}")
     for p in r["pairs"]:
         print(f"  {p['drug_a']} + {p['drug_b']}: {p['text']}")
