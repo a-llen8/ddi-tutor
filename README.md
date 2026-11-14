@@ -42,8 +42,9 @@ python -m pip install -r requirements.txt
 python -m pipeline.build_pairs       # data/processed/pairs.csv
 python -m pipeline.names             # data/processed/brand_generic.csv + match report
 python -m pipeline.build_app_data    # data/app/*.csv.gz (committed, used by the app)
+python -m ml.build_predictions       # data/processed/predictions.db (about 2 hours, resumes, not tracked)
 streamlit run app.py
-pytest
+python -m pytest
 ```
 
 ## Layout
@@ -53,6 +54,17 @@ pytest
 - `pipeline/build_app_data.py`: small files the hosted app loads
 - `pipeline/lookup.py`: search and interaction logic (no UI code)
 - `app.py`: Streamlit web app
+- `ml/lookup_predictions.py`: look up a pair: documented (with severity), predicted (band), no prediction, or name not found with suggestions
+- `ml/case_simulator.py`: check 2 to 8 typed drugs against confirmed DDInter pairs
+- `ml/random_case.py`: random practice cases
+- `ml/srs.py`: spaced repetition scheduler
+- `ml/progress.py`: progress download and upload, with validation and merge rule
+- `ml/dashboard.py`: weak-topic dashboard
+- `ml/interact.py`: model for documented versus not documented
+- `ml/calibrate.py`, `ml/calibrate_known.py`: calibration of those scores
+- `ml/build_predictions.py`: builds the predictions database
+- `ml/evaluate.py`: model evaluation
+- `ml/popularity.py`: popularity-only baseline check
 - `tests/`: pytest suite
 
 ## Known limits
@@ -65,6 +77,8 @@ pytest
 - The brand file has two ingredient columns, so medicines with three or more ingredients may show only the first two.
 - DDInter says its data may be incomplete or contain errors.
 - Severity ignores dose, age, kidney or liver function and other conditions.
+- Predictions are labelled "Predicted, not confirmed" and shown as Low, Medium or High bands, never as percentages. High is not a confirmed interaction. Low does not mean safe.
+- Pairs where one or both drugs were not seen in training get no prediction. Drugs with no chemical structure on file also get none.
 
 ## Hosting (free)
 
