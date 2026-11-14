@@ -14,7 +14,7 @@ severe the interaction is. A quiz tab helps students practise severity levels.
 | A-Z Medicines Dataset of India, Kaggle, by Shudhanshu Singh and Vivek Tiwari (`data/raw/A_Z_medicines_dataset_of_India.csv`) | CC BY-SA 4.0 | brand name to ingredient mapping |
 | Extensive A-Z Medicines Dataset of India, Kaggle (`data/raw/Extensive_A_Z_medicines_dataset_of_India.csv`) | Labelled MIT on Kaggle | not used by the app so far |
 
-DDInter must be credited, used non-commercially, and shared under the same licence.
+DDInter data is licensed CC BY-NC-SA 4.0 (the site's own terms: https://ddinter2.scbdd.com/terms/). It must be credited, used non-commercially, and shared under the same licence. We merged the 8 class files and removed duplicate pairs. Derived files in this repo (`data/app/`, `results/`) are shared under the same licence.
 The Kaggle datasets were collected from online pharmacy sites, and their original terms are
 unclear. If you are a rights holder and want a file removed, please open an issue.
 
@@ -70,7 +70,7 @@ python -m pytest
 ## Known limits
 
 - "No interaction found" means none is listed in the DDInter files we used. It does not mean the combination is safe.
-- Only 8 of the DDInter drug-class files were used (A, B, D, H, L, P, R, V). Some pairs, especially heart and nervous-system drugs, may be missing, so "no interaction found" can be wrong.
+- The DDInter 2.0 Download page offers only 8 drug-class files (A, B, D, H, L, P, R, V), and we used all 8. Some pairs, especially heart and nervous-system drugs, may be missing, so "no interaction found" can be wrong.
 - Some pairs are recorded in DDInter with no severity grade. The app shows these as "Unknown".
 - About 14% of brand medicines have no ingredient that maps to DDInter. Unmatched ingredients
   are listed in `data/processed/unmatched.csv` and shown in the app as "could not be checked".
