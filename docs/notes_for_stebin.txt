@@ -1,0 +1,48 @@
+Hi Stebin, notes for the app side. All on main.
+
+1. Card format (ml/srs.py)
+A card is a plain dict with these fields:
+card_id, ease, reps, interval, due, seen, wrong
+Grades are 0 to 5. Functions:
+review(card, grade, today)
+due_cards(cards, today, limit)
+
+2. Card ID pattern (needed for the dashboard)
+Start every card_id with its subject and a colon.
+Subjects: severity, pair, brand, case
+Examples: severity:warfarin-zidovudine, brand:minocin
+Allowed characters: letters, digits, _ . : -  (1 to 64 characters)
+IDs with no colon are grouped under "other".
+
+3. Progress download and upload (ml/progress.py)
+One JSON file: {"app":"ddi-tutor","version":1,"cards":[...]}
+It holds card states only. No names, no tracking.
+
+Functions and what they return:
+parse_progress(text) returns (cards, errors). If errors is not empty, do not use the file.
+export_progress(cards) returns the file text. It raises ValueError if a card is invalid or an ID is duplicated.
+merge_cards(existing, incoming) returns (merged_cards, stats). stats has added, updated, kept.
+import_progress(text, existing) returns a dict:
+  ok (True or False), cards, errors
+  on success it also has added, updated, kept
+
+Download button: text = export_progress(cards), then offer text as a .json file.
+Upload button: result = import_progress(text, cards). If result["ok"] is False, show result["errors"] and keep the old cards. If True, use result["cards"].
+
+Rule when the same card is in both: keep the one with more answers seen.
+On a tie, the existing card wins.
+A bad file never changes existing progress.
+Limits: 2 MB, 5,000 cards, up to 10 error messages shown.
+Allowed card fields: card_id, ease, reps, interval, due, seen, wrong. Nothing else.
+The buttons themselves are your side.
+
+4. Weak-topic dashboard (ml/dashboard.py)
+build_dashboard(cards, min_seen=5) gives one row per subject:
+topic, cards, seen, wrong, wrong_rate. Worst first.
+Subjects with fewer than 5 answers show "not enough data".
+format_dashboard(rows) gives plain text if you want a quick view.
+
+5. Reminders
+Show bands for predictions, never percentages.
+"No record" never means "safe".
+Do not read data/processed/ in the app.
