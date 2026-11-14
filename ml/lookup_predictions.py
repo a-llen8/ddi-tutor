@@ -70,10 +70,21 @@ def resolve(name, ids):
     if len(near) > 1:
         return None, None, ("ambiguous", f"{name.strip()} matches several DDInter entries: "
                             + ", ".join(SHOWN[n] for n in near[:6]) + ". Please pick one.")
-    close = difflib.get_close_matches(k, list(ids), n=3, cutoff=0.75)
+    pool = list(ids)
+    labels = {n: SHOWN.get(n, n) for n in ids}
+    for a, target in ALIASES.items():
+        if a not in ids and target.lower() in ids:
+            pool.append(a)
+            shown = SHOWN.get(target.lower(), target)
+            labels[a] = f"{a.title()} (listed in DDInter as {shown})"
+    close = difflib.get_close_matches(k, pool, n=3, cutoff=0.75)
+    suggestions = []
+    for c in close:
+        if labels[c] not in suggestions:
+            suggestions.append(labels[c])
     msg = f"Drug name not found: {name.strip()}."
-    if close:
-        msg += " Did you mean: " + ", ".join(SHOWN[c] for c in close) + "?"
+    if suggestions:
+        msg += " Did you mean: " + ", ".join(suggestions) + "?"
     return None, None, ("not_found", msg)
 
 
