@@ -7,6 +7,7 @@ import streamlit as st
 from pipeline.lookup import Checker
 from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
 from ml.case_simulator import check_case, id_names, MAX_DRUGS
+from ml.random_case import BRANDS, load_context, random_case
 from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
@@ -28,6 +29,15 @@ def load_checker():
 
 
 chk = load_checker()
+
+
+def random_ready():
+    return os.path.exists(LOOKUP_PAIRS) and os.path.exists(BRANDS)
+
+
+@st.cache_resource
+def load_random_context():
+    return load_context()
 
 
 def case_ready():
@@ -152,40 +162,68 @@ with tab_lookup:
                                        "Enter a generic name here, or use the Interaction checker tab for brands.")
 
 # --------------------------------------------------------------- case simulator
+def render_case(r):
+    if r["status"] != "ok":
+        for m in r["messages"]:
+            st.warning(m)
+        return
+    st.write("Drugs: " + ", ".join(r["drugs"]))
+    for n in r["notes"]:
+        st.caption(n)
+    c = r["counts"]
+    n_pairs = len(r["pairs"])
+    word = "pair" if n_pairs == 1 else "pairs"
+    st.subheader(f"{n_pairs} {word}")
+    st.write(f"Major {c['Major']}, Moderate {c['Moderate']}, Minor {c['Minor']}, "
+             f"Unknown {c['Unknown']}, no record {c['no_record']}")
+    for pr in r["pairs"]:
+        if pr["severity"] is None:
+            st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
+                    "Not documented does not mean safe.")
+        else:
+            with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
+                             expanded=pr["severity"] == "Major"):
+                st.write(MEANING[pr["severity"]])
+    st.caption(r["limits"])
+
+
 with tab_case:
-    st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
-             "Only confirmed DDInter records are shown. No prediction is used here.")
     if not case_ready():
         st.info("The case simulator data is not available in this version of the app.")
     else:
         cs_ids, cs_sev = load_lookup_data()
         cs_names = load_case_names()
-        text = st.text_area("Drugs, one per line", key="case_text", height=180)
-        lines = [x.strip() for x in text.splitlines() if x.strip()]
-        if lines:
-            r = check_case(lines, cs_ids, cs_sev, cs_names)
-            if r["status"] != "ok":
-                for m in r["messages"]:
-                    st.warning(m)
+        mode = st.radio("Mode", ["Type my own", "Random case"], horizontal=True, key="case_mode")
+        if mode == "Type my own":
+            st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
+                     "Only confirmed DDInter records are shown. No prediction is used here.")
+            text = st.text_area("Drugs, one per line", key="case_text", height=180)
+            lines = [x.strip() for x in text.splitlines() if x.strip()]
+            if lines:
+                render_case(check_case(lines, cs_ids, cs_sev, cs_names))
+        else:
+            st.write("A random case of 3 to 5 drugs. Work out which pairs interact and how "
+                     "serious they are, then show the answers.")
+            st.caption("Every case has at least one Major pair and at least one pair with no record.")
+            if not random_ready():
+                st.info("Random cases are not available in this version of the app.")
             else:
-                st.write("Drugs: " + ", ".join(r["drugs"]))
-                for n in r["notes"]:
-                    st.caption(n)
-                c = r["counts"]
-                n_pairs = len(r["pairs"])
-                word = "pair" if n_pairs == 1 else "pairs"
-                st.subheader(f"{n_pairs} {word}")
-                st.write(f"Major {c['Major']}, Moderate {c['Moderate']}, Minor {c['Minor']}, "
-                         f"Unknown {c['Unknown']}, no record {c['no_record']}")
-                for pr in r["pairs"]:
-                    if pr["severity"] is None:
-                        st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
-                                "Not documented does not mean safe.")
+                rc_ctx = load_random_context()
+                if st.button("New random case"):
+                    seed = int(np.random.default_rng().integers(1_000_000_000))
+                    rc_names, _ = random_case(rc_ctx, seed)
+                    st.session_state["rc_names"] = rc_names
+                    st.session_state["rc_show"] = False
+                if "rc_names" in st.session_state:
+                    rc_names = st.session_state["rc_names"]
+                    if rc_names is None:
+                        st.warning("No valid case was found this time. Please try again.")
                     else:
-                        with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
-                                         expanded=pr["severity"] == "Major"):
-                            st.write(MEANING[pr["severity"]])
-                st.caption(r["limits"])
+                        st.subheader("Case")
+                        for n in rc_names:
+                            st.write("- " + n)
+                        if st.checkbox("Show answers", key="rc_show"):
+                            render_case(check_case(rc_names, cs_ids, cs_sev, cs_names))
 
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
