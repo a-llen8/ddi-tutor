@@ -6,6 +6,7 @@ import streamlit as st
 
 from pipeline.lookup import Checker
 from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
+from ml.case_simulator import check_case, id_names, MAX_DRUGS
 from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
@@ -29,6 +30,15 @@ def load_checker():
 chk = load_checker()
 
 
+def case_ready():
+    return os.path.exists(LOOKUP_PAIRS)
+
+
+@st.cache_resource
+def load_case_names():
+    return id_names()
+
+
 def lookup_ready():
     return os.path.exists(LOOKUP_PAIRS) and os.path.exists(LOOKUP_DB)
 
@@ -40,7 +50,7 @@ def load_lookup_data():
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
 
-tab_check, tab_lookup, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Quiz", "About & limits"])
+tab_check, tab_lookup, tab_case, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Quiz", "About & limits"])
 
 # ------------------------------------------------------------------ checker
 with tab_check:
@@ -140,6 +150,42 @@ with tab_lookup:
                             st.caption(f"{typed.strip()} looks like a brand name ({item.label}). "
                                        f"Its ingredients: {', '.join(item.ingredients)}. "
                                        "Enter a generic name here, or use the Interaction checker tab for brands.")
+
+# --------------------------------------------------------------- case simulator
+with tab_case:
+    st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
+             "Only confirmed DDInter records are shown. No prediction is used here.")
+    if not case_ready():
+        st.info("The case simulator data is not available in this version of the app.")
+    else:
+        cs_ids, cs_sev = load_lookup_data()
+        cs_names = load_case_names()
+        text = st.text_area("Drugs, one per line", key="case_text", height=180)
+        lines = [x.strip() for x in text.splitlines() if x.strip()]
+        if lines:
+            r = check_case(lines, cs_ids, cs_sev, cs_names)
+            if r["status"] != "ok":
+                for m in r["messages"]:
+                    st.warning(m)
+            else:
+                st.write("Drugs: " + ", ".join(r["drugs"]))
+                for n in r["notes"]:
+                    st.caption(n)
+                c = r["counts"]
+                n_pairs = len(r["pairs"])
+                word = "pair" if n_pairs == 1 else "pairs"
+                st.subheader(f"{n_pairs} {word}")
+                st.write(f"Major {c['Major']}, Moderate {c['Moderate']}, Minor {c['Minor']}, "
+                         f"Unknown {c['Unknown']}, no record {c['no_record']}")
+                for pr in r["pairs"]:
+                    if pr["severity"] is None:
+                        st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
+                                "Not documented does not mean safe.")
+                    else:
+                        with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
+                                         expanded=pr["severity"] == "Major"):
+                            st.write(MEANING[pr["severity"]])
+                st.caption(r["limits"])
 
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
