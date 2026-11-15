@@ -6,7 +6,7 @@ import streamlit as st
 
 from pipeline.lookup import Checker
 from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
-from ml.lookup_predictions import load_pairs, lookup, open_db
+from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
@@ -128,6 +128,18 @@ with tab_lookup:
                 st.info(lk["text"])
             else:
                 st.warning(lk["text"])
+                if lk["status"] == "not_found":
+                    for typed in (name_a, name_b):
+                        if resolve(typed, lk_ids)[2] is None:
+                            continue
+                        hits = [b for b in chk.search(typed, limit=3)
+                                if not b.endswith(" (generic)")
+                                and b.lower().startswith(typed.strip().lower())]
+                        item = chk.resolve(hits[0]) if hits else None
+                        if item and item.ingredients:
+                            st.caption(f"{typed.strip()} looks like a brand name ({item.label}). "
+                                       f"Its ingredients: {', '.join(item.ingredients)}. "
+                                       "Enter a generic name here, or use the Interaction checker tab for brands.")
 
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
