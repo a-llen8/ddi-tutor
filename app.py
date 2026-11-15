@@ -66,8 +66,8 @@ with tab_check:
         inter = res["interactions"]
 
         if inter.empty:
-            st.success("No interaction found in DDInter for these medicines.")
-            st.caption("This does not prove the combination is safe. See 'About & limits'.")
+            st.info("No record in DDInter for these medicines. Not documented does not mean safe.")
+            st.caption("See 'About & limits'.")
         else:
             st.subheader(f"{len(inter)} interaction(s) found")
             for _, r in inter.iterrows():
@@ -125,7 +125,7 @@ with tab_about:
 
 **Important limits**
 - Built for learning. **Not for clinical decisions.** Always check a current drug reference and consult a pharmacist or doctor.
-- "No interaction found" means none is listed in DDInter, not that the combination is safe.
+- "No record" means the pair is not documented in DDInter. It does not mean the combination is safe.
 - Brand names are mapped to DDInter ingredient names automatically; some ingredients (especially Indian-market ones) are not covered and are shown as "could not be checked".
 - Severity levels follow DDInter and do not account for dose, patient age, kidney or liver function, or other conditions.
 """
