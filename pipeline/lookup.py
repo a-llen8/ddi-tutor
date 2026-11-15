@@ -83,13 +83,15 @@ class Checker:
 
     # ---------- checking ----------
     def check(self, items: list) -> dict:
-        """Compare every pair of items. Returns interactions, duplicates, no_data."""
-        interactions, duplicates = [], []
+        """Compare every pair of items. Returns interactions, duplicates, no_record, no_data."""
+        interactions, duplicates, no_record = [], [], []
         for x, y in combinations(items, 2):
+            found = shared = False
             for a in x.ingredients:
                 for b in y.ingredients:
                     if a == b:
                         duplicates.append({"item_1": x.label, "item_2": y.label, "ingredient": a})
+                        shared = True
                         continue
                     sev = self._sev.get(frozenset((a, b)))
                     if sev:
@@ -97,6 +99,9 @@ class Checker:
                             "item_1": x.label, "item_2": y.label,
                             "ingredient_1": a, "ingredient_2": b, "severity": sev,
                         })
+                        found = True
+            if x.ingredients and y.ingredients and not found and not shared:
+                no_record.append({"item_1": x.label, "item_2": y.label})
         df = pd.DataFrame(
             interactions,
             columns=["item_1", "item_2", "ingredient_1", "ingredient_2", "severity"],
@@ -104,7 +109,12 @@ class Checker:
         if not df.empty:
             df = df.sort_values("severity", key=lambda s: s.map(SEVERITY_ORDER)).reset_index(drop=True)
         no_data = [{"item": i.label, "ingredient": u} for i in items for u in i.unmatched]
-        return {"interactions": df, "duplicates": pd.DataFrame(duplicates), "no_data": pd.DataFrame(no_data)}
+        return {
+            "interactions": df,
+            "duplicates": pd.DataFrame(duplicates),
+            "no_record": pd.DataFrame(no_record, columns=["item_1", "item_2"]),
+            "no_data": pd.DataFrame(no_data),
+        }
 
     # ---------- quiz ----------
     def quiz_question(self, rng):

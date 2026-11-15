@@ -78,6 +78,9 @@ with tab_check:
                 ):
                     st.write(MEANING[r["severity"]])
 
+        if not res["no_record"].empty:
+            st.info("No record in DDInter for these pairs. Not documented does not mean safe:")
+            st.dataframe(res["no_record"], hide_index=True, use_container_width=True)
         if not res["duplicates"].empty:
             st.warning("Same ingredient in more than one medicine (duplicate therapy):")
             st.dataframe(res["duplicates"], hide_index=True, use_container_width=True)
