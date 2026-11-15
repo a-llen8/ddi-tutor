@@ -1,8 +1,12 @@
+import os
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 
 from pipeline.lookup import Checker
+from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
+from ml.lookup_predictions import load_pairs, lookup, open_db
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
@@ -24,10 +28,19 @@ def load_checker():
 
 chk = load_checker()
 
+
+def lookup_ready():
+    return os.path.exists(LOOKUP_PAIRS) and os.path.exists(LOOKUP_DB)
+
+
+@st.cache_resource
+def load_lookup_data():
+    return load_pairs()
+
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
 
-tab_check, tab_quiz, tab_about = st.tabs(["Interaction checker", "Quiz", "About & limits"])
+tab_check, tab_lookup, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Quiz", "About & limits"])
 
 # ------------------------------------------------------------------ checker
 with tab_check:
@@ -88,6 +101,34 @@ with tab_check:
             st.info("Ingredients not covered by DDInter (could not be checked):")
             st.dataframe(res["no_data"], hide_index=True, use_container_width=True)
 
+# ------------------------------------------------------------------- lookup
+with tab_lookup:
+    st.write("Check one pair by generic name. Documented pairs come from DDInter. "
+             "A pair with no record may get a prediction band.")
+    if not lookup_ready():
+        st.info("Prediction data is not available in this version of the app.")
+    else:
+        lk_ids, lk_sev = load_lookup_data()
+        lc1, lc2 = st.columns(2)
+        name_a = lc1.text_input("First drug (generic name)", key="lk_a")
+        name_b = lc2.text_input("Second drug (generic name)", key="lk_b")
+        if name_a.strip() and name_b.strip():
+            con = open_db()
+            try:
+                lk = lookup(name_a, name_b, lk_ids, lk_sev, con)
+            finally:
+                con.close()
+            if lk["status"] == "documented":
+                st.write(BADGE[lk["severity"]])
+                st.write(MEANING[lk["severity"]])
+                st.caption(lk["text"])
+            elif lk["status"] == "predicted":
+                (st.warning if lk["band"] == "High" else st.info)(lk["text"])
+            elif lk["status"] == "no_prediction":
+                st.info(lk["text"])
+            else:
+                st.warning(lk["text"])
+
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
     st.write("Guess the severity DDInter assigns to each pair.")
@@ -129,6 +170,7 @@ with tab_about:
 **Important limits**
 - Built for learning. **Not for clinical decisions.** Always check a current drug reference and consult a pharmacist or doctor.
 - "No record" means the pair is not documented in DDInter. It does not mean the combination is safe.
+- Pair lookup predictions are bands (Low, Medium, High) based on similarity to documented pairs. They are always Predicted, not confirmed. Low does not mean safe.
 - Brand names are mapped to DDInter ingredient names automatically; some ingredients (especially Indian-market ones) are not covered and are shown as "could not be checked".
 - Severity levels follow DDInter and do not account for dose, patient age, kidney or liver function, or other conditions.
 """
