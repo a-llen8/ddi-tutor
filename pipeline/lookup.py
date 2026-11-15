@@ -118,7 +118,12 @@ class Checker:
 
     # ---------- quiz ----------
     def quiz_question(self, rng):
-        """Random pair with a known severity (Unknown excluded)."""
-        known = self.pairs[self.pairs["severity"] != "Unknown"]
-        row = known.iloc[int(rng.integers(len(known)))]
+        """Random pair with a known severity (Unknown excluded). Each level is equally likely."""
+        sev = self.pairs["severity"]
+        levels = [s for s in ("Major", "Moderate", "Minor") if (sev == s).any()]
+        if not levels:
+            raise ValueError("no graded pairs")
+        level = levels[int(rng.integers(len(levels)))]
+        pool = self.pairs[sev == level]
+        row = pool.iloc[int(rng.integers(len(pool)))]
         return row["drug_a"], row["drug_b"], row["severity"]
