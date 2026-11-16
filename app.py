@@ -1,4 +1,7 @@
+import hashlib
 import os
+import re
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -8,6 +11,9 @@ from pipeline.lookup import Checker
 from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
 from ml.case_simulator import check_case, id_names, MAX_DRUGS
 from ml.random_case import BRANDS, load_context, random_case
+from ml.srs import new_card, review, due_cards
+from ml.progress import export_progress, import_progress
+from ml.dashboard import build_dashboard
 from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
@@ -60,7 +66,7 @@ def load_lookup_data():
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
 
-tab_check, tab_lookup, tab_case, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Quiz", "About & limits"])
+tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"])
 
 # ------------------------------------------------------------------ checker
 with tab_check:
@@ -162,7 +168,18 @@ with tab_lookup:
                                        "Enter a generic name here, or use the Interaction checker tab for brands.")
 
 # --------------------------------------------------------------- case simulator
-def render_case(r):
+def predict_pair(a, b):
+    if not lookup_ready():
+        return None
+    ids, sev = load_lookup_data()
+    con = open_db()
+    try:
+        return lookup(a, b, ids, sev, con)
+    finally:
+        con.close()
+
+
+def render_case(r, pred=None):
     if r["status"] != "ok":
         for m in r["messages"]:
             st.warning(m)
@@ -178,11 +195,17 @@ def render_case(r):
              f"Unknown {c['Unknown']}, no record {c['no_record']}")
     for pr in r["pairs"]:
         if pr["severity"] is None:
-            st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
-                    "Not documented does not mean safe.")
+            lk = pred(pr["drug_a"], pr["drug_b"]) if pred else None
+            if lk and lk["status"] == "predicted":
+                (st.warning if lk["band"] == "High" else st.info)(
+                    f"No record: {pr['drug_a']} + {pr['drug_b']}. "
+                    f"Not documented does not mean safe. {lk['text']}")
+            else:
+                st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
+                        "Not documented does not mean safe.")
         else:
             with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
-                             expanded=pr["severity"] == "Major"):
+                             expanded=True):
                 st.write(MEANING[pr["severity"]])
     st.caption(r["limits"])
 
@@ -196,11 +219,12 @@ with tab_case:
         mode = st.radio("Mode", ["Type my own", "Random case"], horizontal=True, key="case_mode")
         if mode == "Type my own":
             st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
-                     "Only confirmed DDInter records are shown. No prediction is used here.")
+                     "Documented pairs come from DDInter. A pair with no record may also show a "
+                     "predicted band, always labelled Predicted, not confirmed.")
             text = st.text_area("Drugs, one per line", key="case_text", height=180)
             lines = [x.strip() for x in text.splitlines() if x.strip()]
             if lines:
-                render_case(check_case(lines, cs_ids, cs_sev, cs_names))
+                render_case(check_case(lines, cs_ids, cs_sev, cs_names), predict_pair)
         else:
             st.write("A random case of 3 to 5 drugs. Work out which pairs interact and how "
                      "serious they are, then show the answers.")
@@ -223,7 +247,122 @@ with tab_case:
                         for n in rc_names:
                             st.write("- " + n)
                         if st.checkbox("Show answers", key="rc_show"):
-                            render_case(check_case(rc_names, cs_ids, cs_sev, cs_names))
+                            render_case(check_case(rc_names, cs_ids, cs_sev, cs_names), predict_pair)
+
+# ------------------------------------------------------------------- flashcards
+def fc_card_id(a, b, truth):
+    prefix = "severity-" + truth.lower() + ":"
+    slug = re.sub(r"[^a-z0-9]+", "-", f"{a}-{b}".lower()).strip("-")
+    h = hashlib.sha1(f"{a}|{b}".encode("utf-8")).hexdigest()[:8]
+    room = 64 - len(prefix) - 1 - len(h)
+    return f"{prefix}{slug[:room].rstrip('-')}-{h}"
+
+
+@st.cache_resource
+def load_fc_index():
+    index = {}
+    graded = chk.pairs[chk.pairs["severity"] != "Unknown"]
+    for a, b, s in zip(graded["drug_a"], graded["drug_b"], graded["severity"]):
+        index.setdefault(fc_card_id(a, b, s), (a, b, s))
+    return index
+
+
+with tab_cards:
+    st.write("Practice the severity DDInter gives to drug pairs. Cards you miss come back sooner. "
+             "Progress is kept only while this page stays open, so download it before you leave.")
+    fc_index = load_fc_index()
+    if "fc_cards" not in st.session_state:
+        st.session_state["fc_cards"] = {}
+        st.session_state["fc_current"] = None
+        st.session_state["fc_result"] = None
+        st.session_state["fc_rng"] = np.random.default_rng()
+    cards = st.session_state["fc_cards"]
+    today = date.today()
+
+    if st.session_state["fc_current"] is None:
+        due = [c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index]
+        if due:
+            st.session_state["fc_current"] = due[0]["card_id"]
+        else:
+            for _ in range(30):
+                qa, qb, qs = chk.quiz_question(st.session_state["fc_rng"])
+                new_id = fc_card_id(qa, qb, qs)
+                if new_id in fc_index and new_id not in cards:
+                    cards[new_id] = new_card(new_id, today)
+                    st.session_state["fc_current"] = new_id
+                    break
+    cid = st.session_state["fc_current"]
+
+    if cid is None:
+        st.info("No card is available right now.")
+    else:
+        fa, fb, ftruth = fc_index[cid]
+        st.subheader(f"{fa.title()}  +  {fb.title()}")
+        result = st.session_state["fc_result"]
+        guess = st.radio("Severity DDInter gives this pair", ["Major", "Moderate", "Minor"],
+                         horizontal=True, index=None, key=f"fc_guess_{cid}",
+                         disabled=result is not None)
+        if st.button("Check answer", key="fc_check", disabled=guess is None or result is not None):
+            right = guess == ftruth
+            cards[cid] = review(cards[cid], 4 if right else 1, today)
+            st.session_state["fc_result"] = {"ok": right, "truth": ftruth}
+            st.rerun()
+        if result is not None:
+            (st.success if result["ok"] else st.error)(
+                f"{'Correct' if result['ok'] else 'Not quite'}: {result['truth']}. "
+                f"{MEANING[result['truth']]}")
+            st.caption(f"Next review in {cards[cid]['interval']} day(s).")
+            if st.button("Next card", key="fc_next"):
+                st.session_state["fc_current"] = None
+                st.session_state["fc_result"] = None
+                st.rerun()
+
+    st.divider()
+    st.subheader("Your progress")
+    n_due = len([c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index])
+    st.write(f"Cards started: {len(cards)}. Due today: {n_due}.")
+    if cards:
+        st.download_button("Download progress", data=export_progress(list(cards.values())),
+                           file_name="ddi-tutor-progress.json", mime="application/json")
+    up = st.file_uploader("Upload a progress file", type=["json"], key="fc_upload")
+    if up is not None:
+        marker = f"{up.name}:{up.size}"
+        if st.session_state.get("fc_upload_marker") != marker:
+            st.session_state["fc_upload_marker"] = marker
+            try:
+                up_text = up.getvalue().decode("utf-8")
+            except UnicodeDecodeError:
+                up_text = None
+            if up_text is None:
+                st.session_state["fc_upload_msg"] = ("error", ["the file is not text"])
+            else:
+                res = import_progress(up_text, list(cards.values()))
+                if res["ok"]:
+                    st.session_state["fc_cards"] = {c["card_id"]: c for c in res["cards"]}
+                    st.session_state["fc_current"] = None
+                    st.session_state["fc_result"] = None
+                    st.session_state["fc_upload_msg"] = (
+                        "ok", f"Imported. Added {res['added']}, updated {res['updated']}, "
+                              f"kept {res['kept']}.")
+                else:
+                    st.session_state["fc_upload_msg"] = ("error", res["errors"])
+            st.rerun()
+    up_msg = st.session_state.get("fc_upload_msg")
+    if up_msg:
+        if up_msg[0] == "ok":
+            st.success(up_msg[1])
+        else:
+            for m in up_msg[1]:
+                st.warning(m)
+
+    if cards:
+        rows = build_dashboard(list(cards.values()))
+        table = pd.DataFrame([{
+            "topic": r["topic"], "cards": r["cards"], "answers": r["seen"], "wrong": r["wrong"],
+            "wrong rate": ("not enough data" if r["wrong_rate"] is None
+                           else f"{round(100 * r['wrong_rate'])}%")} for r in rows])
+        st.write("Weak topics, worst first. A topic needs 5 answers before it is ranked.")
+        st.dataframe(table, hide_index=True)
 
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
