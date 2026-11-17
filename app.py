@@ -14,6 +14,7 @@ from ml.random_case import BRANDS, load_context, random_case
 from ml.srs import new_card, review, due_cards
 from ml.progress import export_progress, import_progress
 from ml.dashboard import build_dashboard
+from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
@@ -238,6 +239,7 @@ with tab_case:
                     rc_names, _ = random_case(rc_ctx, seed)
                     st.session_state["rc_names"] = rc_names
                     st.session_state["rc_show"] = False
+                    st.session_state["rc_n"] = st.session_state.get("rc_n", 0) + 1
                 if "rc_names" in st.session_state:
                     rc_names = st.session_state["rc_names"]
                     if rc_names is None:
@@ -246,6 +248,21 @@ with tab_case:
                         st.subheader("Case")
                         for n in rc_names:
                             st.write("- " + n)
+                        rc_n = st.session_state.get("rc_n", 0)
+                        rc_r = check_case(rc_names, cs_ids, cs_sev, cs_names)
+                        if rc_r["status"] == "ok":
+                            st.write("Which pairs do you think are Major? Tick them.")
+                            rc_ticked = set()
+                            for i, (a, b) in enumerate(neutral_pairs(rc_r)):
+                                if st.checkbox(f"{a} + {b}", key=f"rc_tick_{rc_n}_{i}"):
+                                    rc_ticked.add(frozenset((a, b)))
+                            if st.checkbox("Check my ticks", key=f"rc_done_{rc_n}"):
+                                sc = score_ticks(rc_r, rc_ticked)
+                                st.write(f"Major pairs found: {len(sc['found'])} of {sc['n_major']}.")
+                                if sc["missed"]:
+                                    st.warning("Missed Major: " + ", ".join(sc["missed"]))
+                                if sc["false_alarms"]:
+                                    st.info("Ticked, but not Major: " + ", ".join(sc["false_alarms"]))
                         if st.checkbox("Show answers", key="rc_show"):
                             render_case(check_case(rc_names, cs_ids, cs_sev, cs_names), predict_pair)
 
