@@ -23,7 +23,7 @@ MEANING = {
     "Major": "Potentially life-threatening or may need medical intervention. Usually avoid the combination.",
     "Moderate": "May worsen the patient's condition or need a change in therapy or monitoring.",
     "Minor": "Limited clinical effect. Be aware; usually no change needed.",
-    "Unknown": "An interaction is listed, but its severity is not classified in DDInter.",
+    "Unknown": "DDInter lists an interaction for this pair but did not grade it. Pairs like this come from a published study that had no mechanism description, so the severity was left unclassified.",
 }
 
 
@@ -119,13 +119,13 @@ with tab_check:
 
         if not res["no_record"].empty:
             st.info("No record in DDInter for these pairs. Not documented does not mean safe:")
-            st.dataframe(res["no_record"], hide_index=True, use_container_width=True)
+            st.dataframe(res["no_record"], hide_index=True, width="stretch")
         if not res["duplicates"].empty:
             st.warning("Same ingredient in more than one medicine (duplicate therapy):")
-            st.dataframe(res["duplicates"], hide_index=True, use_container_width=True)
+            st.dataframe(res["duplicates"], hide_index=True, width="stretch")
         if not res["no_data"].empty:
             st.info("Ingredients not covered by DDInter (could not be checked):")
-            st.dataframe(res["no_data"], hide_index=True, use_container_width=True)
+            st.dataframe(res["no_data"], hide_index=True, width="stretch")
 
 # ------------------------------------------------------------------- lookup
 with tab_lookup:
