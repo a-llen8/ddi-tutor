@@ -8,6 +8,7 @@ from ml.case_simulator import check_case, id_names, show, verify
 from ml.lookup_predictions import PAIRS, load_pairs
 
 BRANDS = "data/processed/brand_generic.csv"
+MIN_DOCUMENTED = 2
 
 
 def build_pool(ids):
@@ -29,7 +30,8 @@ def load_context():
 
 def random_case(ctx, seed, max_tries=200):
     """Returns (drug names, tries). Names is None if no valid case was found.
-    A valid case has 3 to 5 drugs, at least one Major pair and at least one pair with no record.
+    A valid case has 3 to 5 drugs, at least one Major pair, at least one pair with no record
+    and at least MIN_DOCUMENTED pairs with a DDInter record.
     The answers are not returned. Use check_case(names, ...) for them."""
     rng = np.random.default_rng(seed)
     pool = ctx["pool"]
@@ -41,7 +43,8 @@ def random_case(ctx, seed, max_tries=200):
         r = check_case(names, ctx["ids"], ctx["sev"], ctx["names_of"])
         if (r["status"] == "ok" and len(r["drugs"]) == k
                 and r["counts"]["Major"] >= 1 and r["counts"]["no_record"] >= 1
-                and r["counts"]["Unknown"] <= 1):
+                and r["counts"]["Unknown"] <= 1
+                and len(r["pairs"]) - r["counts"]["no_record"] >= MIN_DOCUMENTED):
             return names, attempt
     return None, max_tries
 
