@@ -9,6 +9,7 @@ from ml.lookup_predictions import PAIRS, load_pairs
 
 BRANDS = "data/processed/brand_generic.csv"
 MIN_DOCUMENTED = 2
+MIN_SHARE = 0.4
 
 
 def build_pool(ids):
@@ -28,10 +29,10 @@ def load_context():
     return {"ids": ids, "sev": sev, "names_of": id_names(), "pool": pool, "weights": weights}
 
 
-def random_case(ctx, seed, max_tries=200):
+def random_case(ctx, seed, max_tries=600):
     """Returns (drug names, tries). Names is None if no valid case was found.
     A valid case has 3 to 5 drugs, at least one Major pair, at least one pair with no record
-    and at least MIN_DOCUMENTED pairs with a DDInter record.
+    and at least MIN_DOCUMENTED pairs, and at least MIN_SHARE of all pairs, with a DDInter record.
     The answers are not returned. Use check_case(names, ...) for them."""
     rng = np.random.default_rng(seed)
     pool = ctx["pool"]
@@ -44,7 +45,8 @@ def random_case(ctx, seed, max_tries=200):
         if (r["status"] == "ok" and len(r["drugs"]) == k
                 and r["counts"]["Major"] >= 1 and r["counts"]["no_record"] >= 1
                 and r["counts"]["Unknown"] <= 1
-                and len(r["pairs"]) - r["counts"]["no_record"] >= MIN_DOCUMENTED):
+                and len(r["pairs"]) - r["counts"]["no_record"] >= MIN_DOCUMENTED
+                and len(r["pairs"]) - r["counts"]["no_record"] >= MIN_SHARE * len(r["pairs"])):
             return names, attempt
     return None, max_tries
 
