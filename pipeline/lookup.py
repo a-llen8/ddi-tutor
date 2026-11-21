@@ -19,8 +19,11 @@ class Item:
 
 
 class Checker:
-    def __init__(self, pairs: pd.DataFrame, meds: pd.DataFrame):
+    def __init__(self, pairs: pd.DataFrame, meds: pd.DataFrame, coverage: dict = None):
         self.pairs = pairs
+        # {lowercase generic name: covered by the 8 DDInter files}. None turns the
+        # coverage warning off completely.
+        self.coverage = coverage
         # {frozenset({a, b}): severity}
         self._sev = {
             frozenset((a, b)): s
@@ -81,10 +84,21 @@ class Checker:
             (ing if pd.notna(dd) else unmatched).append(dd if pd.notna(dd) else raw)
         return Item(label=row["brand"], ingredients=list(dict.fromkeys(ing)), unmatched=unmatched)
 
+    # ---------- coverage ----------
+    def is_covered(self, name: str) -> bool:
+        """A name missing from the table counts as covered, so the app never
+        claims a pair is outside the files without proof."""
+        if not self.coverage:
+            return True
+        return bool(self.coverage.get(str(name).strip().lower(), True))
+
+    def all_outside(self, names: list) -> bool:
+        return bool(names) and not any(self.is_covered(n) for n in names)
+
     # ---------- checking ----------
     def check(self, items: list) -> dict:
         """Compare every pair of items. Returns interactions, duplicates, no_record, no_data."""
-        interactions, duplicates, no_record = [], [], []
+        interactions, duplicates, no_record, outside = [], [], [], []
         for x, y in combinations(items, 2):
             found = shared = False
             for a in x.ingredients:
@@ -101,7 +115,11 @@ class Checker:
                         })
                         found = True
             if x.ingredients and y.ingredients and not found and not shared:
-                no_record.append({"item_1": x.label, "item_2": y.label})
+                row = {"item_1": x.label, "item_2": y.label}
+                if self.all_outside(x.ingredients) and self.all_outside(y.ingredients):
+                    outside.append(row)
+                else:
+                    no_record.append(row)
         df = pd.DataFrame(
             interactions,
             columns=["item_1", "item_2", "ingredient_1", "ingredient_2", "severity"],
@@ -113,6 +131,7 @@ class Checker:
             "interactions": df,
             "duplicates": pd.DataFrame(duplicates),
             "no_record": pd.DataFrame(no_record, columns=["item_1", "item_2"]),
+            "outside_files": pd.DataFrame(outside, columns=["item_1", "item_2"]),
             "no_data": pd.DataFrame(no_data),
         }
 

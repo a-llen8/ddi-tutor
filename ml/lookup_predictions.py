@@ -1,18 +1,23 @@
 import argparse
 import difflib
+import os
 import sqlite3
 
 import pandas as pd
 
 PAIRS = "data/processed/pairs.csv"
 DB = "data/processed/predictions.db"
+COVERAGE = "data/app/coverage.csv.gz"
 
 BAND_TEXT = {
     "Low": "Low similarity to pairs that DDInter lists. This does not mean the pair is safe.",
     "Medium": "Medium similarity to pairs that DDInter lists. This is not a risk or severity rating.",
     "High": "High similarity to pairs that DDInter lists. This is not a risk or severity rating.",
 }
-NOT_SAFE = "No record in DDInter. Not documented does not mean safe."
+NOT_SAFE = "No record in the 8 DDInter files used here. Not documented does not mean safe."
+OUTSIDE = ("Both of these drugs sit outside the 8 DDInter class files used here, so this pair "
+           "could never show up as documented and gets no prediction. That says nothing about "
+           "whether the pair interacts. Check a current drug reference.")
 
 ALIASES = {
     "aspirin": "Acetylsalicylic acid",
@@ -45,6 +50,25 @@ def load_pairs():
     for a, b, s in zip(p["drug_a_id"], p["drug_b_id"], p["severity"]):
         sev[frozenset((str(a), str(b)))] = s
     return ids, sev
+
+
+def load_coverage():
+    """{lowercase drug name: covered}. Empty when the file is missing."""
+    if not os.path.exists(COVERAGE):
+        return {}
+    d = pd.read_csv(COVERAGE)
+    return dict(zip(d["drug"].astype(str).str.strip().str.lower(),
+                    d["covered"].astype(bool)))
+
+
+def covered_id_set(ids, coverage):
+    """DDInter ids of covered drugs. A name missing from the table counts as
+    covered, so the app never claims a pair is outside the files without proof."""
+    out = set()
+    for name, id_set in ids.items():
+        if coverage.get(name, True):
+            out |= set(id_set)
+    return out
 
 
 def open_db():
@@ -88,7 +112,7 @@ def resolve(name, ids):
     return None, None, ("not_found", msg)
 
 
-def decide(A, B, sev, con):
+def decide(A, B, sev, con, covered=None):
     if A == B:
         return {"status": "same_drug", "text": "These are the same drug."}
 
@@ -101,6 +125,9 @@ def decide(A, B, sev, con):
                 else:
                     text = f"Documented in DDInter: {s}."
                 return {"status": "documented", "severity": s, "text": text}
+
+    if covered and not (set(A) & covered) and not (set(B) & covered):
+        return {"status": "outside_files", "text": OUTSIDE}
 
     for x in A:
         for y in B:
@@ -125,7 +152,7 @@ def decide(A, B, sev, con):
             "text": f"No prediction available: {reason} {NOT_SAFE}"}
 
 
-def lookup(name_a, name_b, ids, sev, con):
+def lookup(name_a, name_b, ids, sev, con, covered=None):
     """Returns a dict with status and text. For predictions it also has band and score_pct.
     score_pct is for checking only. The app should not show it."""
     A, na, pa = resolve(name_a, ids)
@@ -135,7 +162,7 @@ def lookup(name_a, name_b, ids, sev, con):
         status = "ambiguous" if any(p[0] == "ambiguous" for p in problems) else "not_found"
         return {"status": status, "text": " ".join(p[1] for p in problems)}
     notes = " ".join(x for x in (na, nb) if x)
-    r = decide(A, B, sev, con)
+    r = decide(A, B, sev, con, covered)
     if notes:
         r["text"] = notes + " " + r["text"]
     return r

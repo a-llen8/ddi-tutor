@@ -15,7 +15,8 @@ from ml.srs import new_card, review, due_cards
 from ml.progress import export_progress, import_progress
 from ml.dashboard import build_dashboard
 from ml.spot_pairs import neutral_pairs, score_ticks
-from ml.lookup_predictions import load_pairs, lookup, open_db, resolve
+from ml.lookup_predictions import (COVERAGE, covered_id_set, load_coverage, load_pairs,
+                                   lookup, open_db, resolve)
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
@@ -32,7 +33,7 @@ MEANING = {
 def load_checker():
     pairs = pd.read_csv("data/app/pairs.csv.gz")
     meds = pd.read_csv("data/app/medicines.csv.gz")
-    return Checker(pairs, meds)
+    return Checker(pairs, meds, load_coverage())
 
 
 chk = load_checker()
@@ -62,7 +63,12 @@ def lookup_ready():
 
 @st.cache_resource
 def load_lookup_data():
-    return load_pairs()
+    ids, sev = load_pairs()
+    return ids, sev, covered_id_set(ids, load_coverage())
+
+
+OUTSIDE_NOTE = ("Some drugs are outside the 8 DDInter class files used here. A pair of two "
+                "such drugs can never show as documented, and gets no band.")
 
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
@@ -105,10 +111,12 @@ with tab_check:
         res = chk.check(st.session_state["items"])
         inter = res["interactions"]
 
-        if inter.empty:
-            st.info("No record in DDInter for these medicines. Not documented does not mean safe.")
+        nothing_else = all(res[k].empty for k in ("no_record", "outside_files", "duplicates"))
+        if inter.empty and nothing_else:
+            st.info("No record in the 8 DDInter files used here. "
+                    "Not documented does not mean safe.")
             st.caption("See 'About & limits'.")
-        else:
+        elif not inter.empty:
             st.subheader(f"{len(inter)} interaction(s) found")
             for _, r in inter.iterrows():
                 with st.expander(
@@ -119,8 +127,14 @@ with tab_check:
                     st.write(MEANING[r["severity"]])
 
         if not res["no_record"].empty:
-            st.info("No record in DDInter for these pairs. Not documented does not mean safe:")
+            st.info("No record in the 8 DDInter files used here. "
+                    "Not documented does not mean safe:")
             st.dataframe(res["no_record"], hide_index=True, width="stretch")
+        if not res["outside_files"].empty:
+            st.info("Cannot be checked here: both medicines contain only drugs from the 6 "
+                    "DDInter class files this project does not have. These pairs could never "
+                    "show as documented. That says nothing about whether they interact:")
+            st.dataframe(res["outside_files"], hide_index=True, width="stretch")
         if not res["duplicates"].empty:
             st.warning("Same ingredient in more than one medicine (duplicate therapy):")
             st.dataframe(res["duplicates"], hide_index=True, width="stretch")
@@ -146,14 +160,15 @@ with tab_lookup:
     if not lookup_ready():
         st.info("Prediction data is not available in this version of the app.")
     else:
-        lk_ids, lk_sev = load_lookup_data()
+        lk_ids, lk_sev, lk_cov = load_lookup_data()
+        st.caption(OUTSIDE_NOTE)
         lc1, lc2 = st.columns(2)
         name_a = lc1.text_input("First drug (generic name)", key="lk_a")
         name_b = lc2.text_input("Second drug (generic name)", key="lk_b")
         if name_a.strip() and name_b.strip():
             con = open_db()
             try:
-                lk = lookup(name_a, name_b, lk_ids, lk_sev, con)
+                lk = lookup(name_a, name_b, lk_ids, lk_sev, con, lk_cov)
             finally:
                 con.close()
             if lk["status"] == "documented":
@@ -174,7 +189,7 @@ with tab_lookup:
                         st.caption("Chemical structure is not the same as drug class or effect. "
                                    "A pair with no record here is a sample pair the model used. "
                                    "It is not proof that the pair is safe.")
-            elif lk["status"] == "no_prediction":
+            elif lk["status"] in ("no_prediction", "outside_files"):
                 st.info(lk["text"])
             else:
                 st.warning(lk["text"])
@@ -195,10 +210,10 @@ with tab_lookup:
 def predict_pair(a, b):
     if not lookup_ready():
         return None
-    ids, sev = load_lookup_data()
+    ids, sev, cov = load_lookup_data()
     con = open_db()
     try:
-        return lookup(a, b, ids, sev, con)
+        return lookup(a, b, ids, sev, con, cov)
     finally:
         con.close()
 
@@ -224,6 +239,8 @@ def render_case(r, pred=None):
                 st.info(
                     f"No record: {pr['drug_a']} + {pr['drug_b']}. "
                     f"Not documented does not mean safe. {lk['text']}")
+            elif lk and lk["status"] == "outside_files":
+                st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. " + lk["text"])
             else:
                 st.info(f"No record: {pr['drug_a']} + {pr['drug_b']}. "
                         "Not documented does not mean safe.")
@@ -238,7 +255,7 @@ with tab_case:
     if not case_ready():
         st.info("The case simulator data is not available in this version of the app.")
     else:
-        cs_ids, cs_sev = load_lookup_data()
+        cs_ids, cs_sev, _ = load_lookup_data()
         cs_names = load_case_names()
         mode = st.radio("Mode", ["Type my own", "Random case"], horizontal=True, key="case_mode")
         if mode == "Type my own":
@@ -444,7 +461,8 @@ with tab_about:
 
 **Important limits**
 - Built for learning. **Not for clinical decisions.** Always check a current drug reference and consult a pharmacist or doctor.
-- "No record" means the pair is not documented in DDInter. It does not mean the combination is safe.
+- "No record" means the pair is not documented in the 8 DDInter class files this project uses. It does not mean the combination is safe.
+- DDInter publishes 8 of the 14 drug-class files on its download page. A drug that appears only through partners in those 8 files is marked as not covered here. A pair of two such drugs can never show as documented and gets no band.
 - Pair lookup predictions are bands (Low, Medium, High) based on similarity to documented pairs. They are always Predicted, not confirmed. Low does not mean safe. A band says how much a pair looks like pairs DDInter lists, by chemical structure. It does not say how dangerous the pair is.
 - Brand names are mapped to DDInter ingredient names automatically; some ingredients (especially Indian-market ones) are not covered and are shown as "could not be checked".
 - Severity levels follow DDInter and do not account for dose, patient age, kidney or liver function, or other conditions.
