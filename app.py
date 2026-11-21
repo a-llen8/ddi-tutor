@@ -128,6 +128,17 @@ with tab_check:
             st.info("Ingredients not covered by DDInter (could not be checked):")
             st.dataframe(res["no_data"], hide_index=True, width="stretch")
 
+@st.cache_resource
+def load_lookalike_ctx():
+    from ml.lookalike import build_context
+    return build_context()
+
+
+def lookalike_summary(name_a, name_b):
+    from ml.lookalike import plain_summary
+    return plain_summary(load_lookalike_ctx(), name_a, name_b)
+
+
 # ------------------------------------------------------------------- lookup
 with tab_lookup:
     st.write("Check one pair by generic name. Documented pairs come from DDInter. "
@@ -150,7 +161,19 @@ with tab_lookup:
                 st.write(MEANING[lk["severity"]])
                 st.caption(lk["text"])
             elif lk["status"] == "predicted":
-                (st.warning if lk["band"] == "High" else st.info)(lk["text"])
+                st.info(lk["text"])
+                with st.spinner("Loading look-alike data (first time only)..."):
+                    lkx = lookalike_summary(name_a, name_b)
+                if lkx:
+                    with st.expander("Which known pairs is this band based on?", expanded=True):
+                        st.write(f"The band comes from the {lkx['n']} known pairs that look most "
+                                 f"like this one by chemical structure. {lkx['n_documented']} of "
+                                 "them are listed in DDInter.")
+                        for ln in lkx["lines"]:
+                            st.markdown("- " + ln)
+                        st.caption("Chemical structure is not the same as drug class or effect. "
+                                   "A pair with no record here is a sample pair the model used. "
+                                   "It is not proof that the pair is safe.")
             elif lk["status"] == "no_prediction":
                 st.info(lk["text"])
             else:
@@ -198,7 +221,7 @@ def render_case(r, pred=None):
         if pr["severity"] is None:
             lk = pred(pr["drug_a"], pr["drug_b"]) if pred else None
             if lk and lk["status"] == "predicted":
-                (st.warning if lk["band"] == "High" else st.info)(
+                st.info(
                     f"No record: {pr['drug_a']} + {pr['drug_b']}. "
                     f"Not documented does not mean safe. {lk['text']}")
             else:
@@ -229,7 +252,7 @@ with tab_case:
         else:
             st.write("A random case of 3 to 5 drugs. Work out which pairs interact and how "
                      "serious they are, then show the answers.")
-            st.caption("Every case has at least one Major pair and at least one pair with no record.")
+            st.caption("Every case has at least one Major pair and at least one pair with no record. At least 2 pairs, and at least 40% of all pairs, have a DDInter record.")
             if not random_ready():
                 st.info("Random cases are not available in this version of the app.")
             else:
@@ -422,7 +445,7 @@ with tab_about:
 **Important limits**
 - Built for learning. **Not for clinical decisions.** Always check a current drug reference and consult a pharmacist or doctor.
 - "No record" means the pair is not documented in DDInter. It does not mean the combination is safe.
-- Pair lookup predictions are bands (Low, Medium, High) based on similarity to documented pairs. They are always Predicted, not confirmed. Low does not mean safe.
+- Pair lookup predictions are bands (Low, Medium, High) based on similarity to documented pairs. They are always Predicted, not confirmed. Low does not mean safe. A band says how much a pair looks like pairs DDInter lists, by chemical structure. It does not say how dangerous the pair is.
 - Brand names are mapped to DDInter ingredient names automatically; some ingredients (especially Indian-market ones) are not covered and are shown as "could not be checked".
 - Severity levels follow DDInter and do not account for dose, patient age, kidney or liver function, or other conditions.
 """

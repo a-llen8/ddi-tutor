@@ -8,9 +8,9 @@ PAIRS = "data/processed/pairs.csv"
 DB = "data/processed/predictions.db"
 
 BAND_TEXT = {
-    "Low": "Low similarity to documented interactions. This does not mean the pair is safe.",
-    "Medium": "Medium similarity to documented interactions.",
-    "High": "High similarity to documented interactions. This is not a confirmed interaction.",
+    "Low": "Low similarity to pairs that DDInter lists. This does not mean the pair is safe.",
+    "Medium": "Medium similarity to pairs that DDInter lists. This is not a risk or severity rating.",
+    "High": "High similarity to pairs that DDInter lists. This is not a risk or severity rating.",
 }
 NOT_SAFE = "No record in DDInter. Not documented does not mean safe."
 
