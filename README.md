@@ -10,11 +10,13 @@ severe the interaction is. A quiz tab helps students practise severity levels.
 
 | Source | Licence | Used for |
 |---|---|---|
-| [DDInter 2.0](https://ddinter2.scbdd.com/download/) (`data/raw/ddinter_downloads_code_*.csv`) | CC BY-NC-SA 4.0 | interaction pairs and severity |
+| [DDInter](https://ddinter2.scbdd.com/terms/) (download files, 8 ATC class files; `data/raw/ddinter_downloads_code_*.csv`) | CC BY-NC-SA 4.0 | interaction pairs and severity |
 | A-Z Medicines Dataset of India, Kaggle, by Shudhanshu Singh and Vivek Tiwari (`data/raw/A_Z_medicines_dataset_of_India.csv`) | CC BY-SA 4.0 | brand name to ingredient mapping |
 | Extensive A-Z Medicines Dataset of India, Kaggle (`data/raw/Extensive_A_Z_medicines_dataset_of_India.csv`) | Labelled MIT on Kaggle | not used by the app so far |
 
-DDInter data is licensed CC BY-NC-SA 4.0 (the site's own terms: https://ddinter2.scbdd.com/terms/). It must be credited, used non-commercially, and shared under the same licence. We merged the 8 class files and removed duplicate pairs. Derived files in this repo (`data/app/`, `results/`) are shared under the same licence.
+How to cite DDInter: Xiong G, Yang Z, Yi J, et al. DDInter: an online drug-drug interaction database towards improving clinical decision-making and patient safety. Nucleic Acids Research. 2022;50(D1):D1200-D1207. doi:10.1093/nar/gkab880
+
+DDInter data is licensed CC BY-NC-SA 4.0 (the site's own terms: https://ddinter2.scbdd.com/terms/). It must be credited, used non-commercially, and shared under the same licence. The 8 class files were merged and duplicate pairs removed. Derived files in this repo (`data/app/`, `results/`) are shared under the same licence.
 The Kaggle datasets were collected from online pharmacy sites, and their original terms are
 unclear. If you are a rights holder and want a file removed, please open an issue.
 
@@ -42,6 +44,7 @@ python -m pip install -r requirements.txt
 python -m pipeline.build_pairs       # data/processed/pairs.csv
 python -m pipeline.names             # data/processed/brand_generic.csv + match report
 python -m pipeline.build_app_data    # data/app/*.csv.gz (committed, used by the app)
+python -m pipeline.coverage          # data/app/coverage.csv.gz (which drugs the 8 files cover)
 python -m ml.build_predictions       # data/processed/predictions.db (about 2 hours, resumes, not tracked)
 streamlit run app.py
 python -m pytest
@@ -52,9 +55,12 @@ python -m pytest
 - `pipeline/build_pairs.py`: merge DDInter files, de-duplicate pairs
 - `pipeline/names.py`: map brand ingredients to DDInter names (salts, synonyms)
 - `pipeline/build_app_data.py`: small files the hosted app loads
+- `pipeline/coverage.py`: which drugs the 8 DDInter class files cover completely
 - `pipeline/lookup.py`: search and interaction logic (no UI code)
 - `app.py`: Streamlit web app
-- `ml/lookup_predictions.py`: look up a pair: documented (with severity), predicted (band), no prediction, or name not found with suggestions
+- `ml/lookup_predictions.py`: look up a pair: documented (with severity), predicted (band), outside the 8 files, no prediction, or name not found with suggestions
+- `ml/lookalike.py`: the 5 closest known pairs behind a band
+- `ml/spot_pairs.py`: spot-the-pair scoring
 - `ml/case_simulator.py`: check 2 to 8 typed drugs against confirmed DDInter pairs
 - `ml/random_case.py`: random practice cases
 - `ml/srs.py`: spaced repetition scheduler
@@ -69,15 +75,20 @@ python -m pytest
 
 ## Known limits
 
-- "No interaction found" means none is listed in the DDInter files we used. It does not mean the combination is safe.
-- The DDInter 2.0 Download page offers only 8 drug-class files (A, B, D, H, L, P, R, V), and we used all 8. Some pairs, especially heart and nervous-system drugs, may be missing, so "no interaction found" can be wrong.
+- "No record" means no interaction is listed in the 8 DDInter files used here. It does not mean the combination is safe.
+- DDInter organises interactions into files by ATC drug class, and publishes 8 of the 14 class
+  files (A, B, D, H, L, P, R, V). All 8 are used here. The 6 that are not published are C, G, J,
+  M, N and S. A pair of two drugs that both sit outside the 8 files can never appear as
+  documented in this project: 1,036 of 1,939 drugs are fully covered and 903 are not, which
+  leaves 407,253 pairs invisible here. Digoxin plus Amiodarone is one of them. The app marks
+  these pairs and shows no band for them.
 - Some pairs are recorded in DDInter with no severity grade. The app shows these as "Unknown".
 - About 14% of brand medicines have no ingredient that maps to DDInter. Unmatched ingredients
   are listed in `data/processed/unmatched.csv` and shown in the app as "could not be checked".
 - The brand file has two ingredient columns, so medicines with three or more ingredients may show only the first two.
 - DDInter says its data may be incomplete or contain errors.
 - Severity ignores dose, age, kidney or liver function and other conditions.
-- Predictions are labelled "Predicted, not confirmed" and shown as Low, Medium or High bands, never as percentages. High is not a confirmed interaction. Low does not mean safe.
+- Predictions are labelled "Predicted, not confirmed" and shown as Low, Medium or High bands, never as percentages. A band says how much a pair looks like pairs DDInter lists, by chemical structure. It is not a risk or severity rating. Low does not mean safe.
 - Pairs where one or both drugs were not seen in training get no prediction. Drugs with no chemical structure on file also get none.
 
 ## Hosting (free)

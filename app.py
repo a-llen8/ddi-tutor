@@ -21,10 +21,12 @@ from ml.lookup_predictions import (COVERAGE, covered_id_set, load_coverage, load
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
 BADGE = {"Major": "🔴 Major", "Moderate": "🟠 Moderate", "Minor": "🟡 Minor", "Unknown": "⚪ Unknown"}
+DEFINED_BY = "(DDInter's definition.)"
+
 MEANING = {
-    "Major": "Potentially life-threatening or may need medical intervention. Usually avoid the combination.",
-    "Moderate": "May worsen the patient's condition or need a change in therapy or monitoring.",
-    "Minor": "Limited clinical effect. Be aware; usually no change needed.",
+    "Major": "The interaction is life-threatening, or needs medical treatment or intervention.",
+    "Moderate": "The interaction may make the patient's disease worse, or needs a change in therapy.",
+    "Minor": "The interaction would limit the clinical effect. It may make side effects more frequent or more severe, but usually no change in therapy is needed.",
     "Unknown": "DDInter lists an interaction for this pair but did not grade it. Pairs like this come from a published study that had no mechanism description, so the severity was left unclassified.",
 }
 
@@ -124,7 +126,7 @@ with tab_check:
                     f"  ({r['item_1']} / {r['item_2']})",
                     expanded=r["severity"] == "Major",
                 ):
-                    st.write(MEANING[r["severity"]])
+                    st.write(MEANING[r["severity"]] + " " + DEFINED_BY)
 
         if not res["no_record"].empty:
             st.info("No record in the 8 DDInter files used here. "
@@ -173,7 +175,7 @@ with tab_lookup:
                 con.close()
             if lk["status"] == "documented":
                 st.write(BADGE[lk["severity"]])
-                st.write(MEANING[lk["severity"]])
+                st.write(MEANING[lk["severity"]] + " " + DEFINED_BY)
                 st.caption(lk["text"])
             elif lk["status"] == "predicted":
                 st.info(lk["text"])
@@ -247,7 +249,7 @@ def render_case(r, pred=None):
         else:
             with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
                              expanded=True):
-                st.write(MEANING[pr["severity"]])
+                st.write(MEANING[pr["severity"]] + " " + DEFINED_BY)
     st.caption(r["limits"])
 
 
