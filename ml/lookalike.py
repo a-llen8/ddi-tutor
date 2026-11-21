@@ -114,6 +114,38 @@ def describe(ctx, name_a, name_b, k=5):
     print("  " + NOTE)
 
 
+def format_lines(found, ids, names, ra, rb, name_a, name_b):
+    """Plain words for the closest known pairs. No scores, no severities."""
+    lines = []
+    for f in found:
+        pa, pb = ids[f["like_a"]], ids[f["like_b"]]
+        la, lb = names.get(pa, pa), names.get(pb, pb)
+        status = "listed in DDInter" if f["documented"] else "no record in DDInter"
+        parts = []
+        for typed, like_name, like_row, my_row in ((name_a, la, f["like_a"], ra),
+                                                    (name_b, lb, f["like_b"], rb)):
+            if like_row == my_row:
+                parts.append(f"{typed.strip()} is the same drug")
+            else:
+                parts.append(f"closest to {typed.strip()}: {like_name}")
+        lines.append(f"{la} + {lb}: {status}. " + "; ".join(parts) + ".")
+    return {"n": len(found), "n_documented": sum(1 for f in found if f["documented"]),
+            "lines": lines}
+
+
+def plain_summary(ctx, name_a, name_b, k=5):
+    """Returns the format_lines result, or None if a name is not found or has no structure."""
+    A, _, pa = resolve(name_a, ctx["lk_ids"])
+    B, _, pb = resolve(name_b, ctx["lk_ids"])
+    if pa or pb:
+        return None
+    ra, rb = first_row(A, ctx["row_of"]), first_row(B, ctx["row_of"])
+    if ra is None or rb is None:
+        return None
+    found, _ = closest_pairs(ctx["S"], ctx["ia"], ctx["ib"], ctx["y"], ctx["fit"], ra, rb, k)
+    return format_lines(found, ctx["ids"], ctx["names"], ra, rb, name_a, name_b)
+
+
 TESTS = [("Abacavir", "Ixazomib"), ("Abacavir", "Ixabepilone"), ("Abacavir", "Ivosidenib")]
 
 
