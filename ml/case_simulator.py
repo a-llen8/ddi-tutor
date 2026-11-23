@@ -3,7 +3,7 @@ import itertools
 
 import pandas as pd
 
-from ml.lookup_predictions import PAIRS, load_pairs, resolve
+from ml.lookup_predictions import APP_PAIRS, PAIRS, load_pairs_app, names_app, resolve
 
 MAX_DRUGS = 8
 ORDER = {"Major": 0, "Moderate": 1, "Minor": 2, "Unknown": 3, None: 4}
@@ -91,13 +91,14 @@ def show(r):
 
 
 def verify(r, df):
-    """Re-reads every pair straight from pairs.csv by name. Returns the number of mismatches."""
+    """Re-reads every pair straight from the pairs file by name (df names must be lowercase).
+    Returns the number of mismatches."""
     bad = 0
     k = len(r["drugs"])
     if len(r["pairs"]) != k * (k - 1) // 2:
         bad += 1
     for p in r["pairs"]:
-        a, b = p["drug_a"], p["drug_b"]
+        a, b = p["drug_a"].lower(), p["drug_b"].lower()
         m = ((df["drug_a"] == a) & (df["drug_b"] == b)) | ((df["drug_a"] == b) & (df["drug_b"] == a))
         found = df[m]["severity"].tolist()
         expected = min(found, key=ORDER.get) if found else None
@@ -119,12 +120,12 @@ if __name__ == "__main__":
     ap.add_argument("--test", action="store_true", help="run 4 test cases")
     args = ap.parse_args()
 
-    ids, sev = load_pairs()
-    names_of = id_names()
+    ids, sev = load_pairs_app()
+    names_of = names_app(ids)
     if args.test:
-        df = pd.read_csv(PAIRS)
-        df["drug_a"] = df["drug_a"].astype(str).str.strip()
-        df["drug_b"] = df["drug_b"].astype(str).str.strip()
+        df = pd.read_csv(APP_PAIRS)
+        df["drug_a"] = df["drug_a"].astype(str).str.strip().str.lower()
+        df["drug_b"] = df["drug_b"].astype(str).str.strip().str.lower()
         for case in TESTS:
             print()
             print("Case:", " | ".join(case))

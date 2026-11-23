@@ -4,10 +4,10 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 
-from ml.case_simulator import check_case, id_names, show, verify
-from ml.lookup_predictions import PAIRS, load_pairs
+from ml.case_simulator import check_case, show, verify
+from ml.lookup_predictions import APP_PAIRS, load_pairs_app, names_app
 
-BRANDS = "data/processed/brand_generic.csv"
+BRANDS = "data/app/medicines.csv.gz"
 MIN_DOCUMENTED = 2
 MIN_SHARE = 0.4
 
@@ -15,7 +15,7 @@ MIN_SHARE = 0.4
 def build_pool(ids):
     """Drugs found in brands that are still sold. Weight = square root of brand count."""
     b = pd.read_csv(BRANDS)
-    b = b[b["Is_discontinued"].astype(str).str.lower() != "true"]
+    b = b[b["discontinued"].astype(str).str.lower() != "true"]
     vals = pd.concat([b["ing1_dd"], b["ing2_dd"]]).dropna().astype(str).str.strip().str.lower()
     counts = vals[vals.isin(set(ids))].value_counts()
     alone = set(b.loc[b["ing2"].isna(), "ing1_dd"].dropna().astype(str).str.strip().str.lower())
@@ -24,9 +24,9 @@ def build_pool(ids):
 
 
 def load_context():
-    ids, sev = load_pairs()
+    ids, sev = load_pairs_app()
     pool, weights = build_pool(ids)
-    return {"ids": ids, "sev": sev, "names_of": id_names(), "pool": pool, "weights": weights}
+    return {"ids": ids, "sev": sev, "names_of": names_app(ids), "pool": pool, "weights": weights}
 
 
 def random_case(ctx, seed, max_tries=600):
@@ -52,9 +52,9 @@ def random_case(ctx, seed, max_tries=600):
 
 
 def run_test(ctx, n=1000):
-    df = pd.read_csv(PAIRS)
-    df["drug_a"] = df["drug_a"].astype(str).str.strip()
-    df["drug_b"] = df["drug_b"].astype(str).str.strip()
+    df = pd.read_csv(APP_PAIRS)
+    df["drug_a"] = df["drug_a"].astype(str).str.strip().str.lower()
+    df["drug_b"] = df["drug_b"].astype(str).str.strip().str.lower()
 
     tries, failed, mismatches = [], 0, 0
     by_k, sev_total, used = Counter(), Counter(), Counter()

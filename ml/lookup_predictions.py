@@ -3,11 +3,15 @@ import difflib
 import os
 import sqlite3
 
+import numpy as np
 import pandas as pd
 
 PAIRS = "data/processed/pairs.csv"
 DB = "data/processed/predictions.db"
 COVERAGE = "data/app/coverage.csv.gz"
+APP_PAIRS = "data/app/pairs.csv.gz"
+BANDS = "data/app/bands.csv.gz"
+BAND_DRUGS = "data/app/band_drugs.csv.gz"
 
 BAND_TEXT = {
     "Low": "Low similarity to pairs that DDInter lists. This does not mean the pair is safe.",
@@ -50,6 +54,62 @@ def load_pairs():
     for a, b, s in zip(p["drug_a_id"], p["drug_b_id"], p["severity"]):
         sev[frozenset((str(a), str(b)))] = s
     return ids, sev
+
+
+def display_name(name):
+    """Shows a lowercase DDInter name. Only the first letter is raised, so a few names
+    lose capitals they have in DDInter (for example Vitamin e)."""
+    return name[:1].upper() + name[1:]
+
+
+def load_pairs_app(path=APP_PAIRS):
+    """Same result as load_pairs, but from the committed app file. The lowercase drug
+    name is its own id (names and DDInter ids are 1 to 1)."""
+    p = pd.read_csv(path)
+    a = p["drug_a"].astype(str).str.strip().str.lower()
+    b = p["drug_b"].astype(str).str.strip().str.lower()
+    ids = {}
+    for n in set(a) | set(b):
+        ids[n] = {n}
+        SHOWN[n] = display_name(n)
+    sev = {frozenset((x, y)): s for x, y, s in zip(a, b, p["severity"])}
+    return ids, sev
+
+
+def names_app(ids):
+    """{id: display name} for ids made by load_pairs_app."""
+    return {n: display_name(n) for n in ids}
+
+
+CODE_BAND = {0: "Low", 1: "Medium", 2: "High"}
+
+
+class BandFile:
+    """Prediction bands from the two committed band files. Bands only, never scores."""
+
+    def __init__(self, bands_path=BANDS, drugs_path=BAND_DRUGS):
+        drugs = pd.read_csv(drugs_path)["drug"].astype(str).tolist()
+        d = pd.read_csv(bands_path)
+        self.n = len(drugs)
+        self.pos = {x: i for i, x in enumerate(drugs)}
+        keys = d["a"].to_numpy(dtype=np.int64) * self.n + d["b"].to_numpy(dtype=np.int64)
+        order = np.argsort(keys, kind="stable")
+        self.keys = keys[order]
+        self.band = d["band"].to_numpy(dtype=np.uint8)[order]
+
+    def has(self, name):
+        return name in self.pos
+
+    def find(self, x, y):
+        """Band name (Low, Medium, High) for two drug names, or None."""
+        px, py = self.pos.get(x), self.pos.get(y)
+        if px is None or py is None or px == py:
+            return None
+        key = min(px, py) * self.n + max(px, py)
+        i = int(np.searchsorted(self.keys, key))
+        if i < len(self.keys) and self.keys[i] == key:
+            return CODE_BAND[int(self.band[i])]
+        return None
 
 
 def load_coverage():
@@ -112,7 +172,28 @@ def resolve(name, ids):
     return None, None, ("not_found", msg)
 
 
+def _no_prediction(have_a, have_b):
+    if have_a and have_b:
+        reason = "this pair is outside what the model covers."
+    else:
+        reason = "at least one of these drugs has no structure on file."
+    return {"status": "no_prediction",
+            "text": f"No prediction available: {reason} {NOT_SAFE}"}
+
+
+def _decide_from_bands(A, B, bands):
+    for x in A:
+        for y in B:
+            band = bands.find(x, y)
+            if band:
+                return {"status": "predicted", "band": band,
+                        "text": "Predicted, not confirmed. " + BAND_TEXT[band]
+                                + " No DDInter record."}
+    return _no_prediction(any(bands.has(x) for x in A), any(bands.has(y) for y in B))
+
+
 def decide(A, B, sev, con, covered=None):
+    """con is a sqlite connection (open_db) or a BandFile. A BandFile gives no score_pct."""
     if A == B:
         return {"status": "same_drug", "text": "These are the same drug."}
 
@@ -129,6 +210,9 @@ def decide(A, B, sev, con, covered=None):
     if covered and not (set(A) & covered) and not (set(B) & covered):
         return {"status": "outside_files", "text": OUTSIDE}
 
+    if isinstance(con, BandFile):
+        return _decide_from_bands(A, B, con)
+
     for x in A:
         for y in B:
             ix, iy = idx_of(con, x), idx_of(con, y)
@@ -144,12 +228,7 @@ def decide(A, B, sev, con, covered=None):
 
     have_a = any(idx_of(con, x) is not None for x in A)
     have_b = any(idx_of(con, y) is not None for y in B)
-    if have_a and have_b:
-        reason = "this pair is outside what the model covers."
-    else:
-        reason = "at least one of these drugs has no structure on file."
-    return {"status": "no_prediction",
-            "text": f"No prediction available: {reason} {NOT_SAFE}"}
+    return _no_prediction(have_a, have_b)
 
 
 def lookup(name_a, name_b, ids, sev, con, covered=None):
@@ -193,7 +272,8 @@ def check(r, exp):
         return "MISMATCH"
     if exp[0] == "documented" and r["severity"] != exp[1]:
         return "MISMATCH"
-    if exp[0] == "predicted" and (r["band"] != exp[1] or r["score_pct"] != exp[2]):
+    if exp[0] == "predicted" and (r["band"] != exp[1]
+                                  or ("score_pct" in r and r["score_pct"] != exp[2])):
         return "MISMATCH"
     return "OK"
 
@@ -202,10 +282,16 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*", help="two drug names")
     ap.add_argument("--test", action="store_true", help="run the test pairs")
+    ap.add_argument("--offline", action="store_true",
+                    help="use data/processed and predictions.db (shows scores) instead of data/app")
     args = ap.parse_args()
 
-    ids, sev = load_pairs()
-    con = open_db()
+    if args.offline:
+        ids, sev = load_pairs()
+        con = open_db()
+    else:
+        ids, sev = load_pairs_app()
+        con = BandFile()
     if args.test:
         for a, b, exp in TESTS:
             r = lookup(a, b, ids, sev, con)
@@ -217,4 +303,5 @@ if __name__ == "__main__":
         print(r["text"])
     else:
         print('Give two drug names, or use --test. Example: python -m ml.lookup_predictions "Warfarin" "Zidovudine"')
-    con.close()
+    if args.offline:
+        con.close()
