@@ -12,7 +12,8 @@ from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
 from ml.lookup_predictions import APP_PAIRS, BANDS, BAND_DRUGS, BandFile, load_pairs_app, names_app
 from ml.case_simulator import check_case, MAX_DRUGS
 from ml.random_case import BRANDS, load_context, random_case
-from ml.srs import new_card, review, due_cards
+from ml.srs import new_card, due_cards
+from ml.sureness import SURENESS, answer
 from ml.progress import MAX_CARDS, export_progress, import_progress
 from ml.dashboard import build_dashboard
 from ml.common_deck import MIN_BRANDS, common_drugs, common_pairs, draw_question
@@ -413,15 +414,21 @@ with tab_cards:
             guess = st.radio("Severity DDInter gives this pair", ["Major", "Moderate", "Minor"],
                              horizontal=True, index=None, key=f"fc_guess_{cid}",
                              disabled=result is not None)
-            if st.button("Check answer", key="fc_check", disabled=guess is None or result is not None):
+            sure = st.radio("How sure are you?", list(SURENESS), horizontal=True, index=None,
+                            key=f"fc_sure_{cid}", disabled=result is not None)
+            if st.button("Check answer", key="fc_check",
+                         disabled=guess is None or sure is None or result is not None):
                 right = guess == ftruth
-                cards[cid] = review(cards[cid], 4 if right else 1, today)
-                st.session_state["fc_result"] = {"ok": right, "truth": ftruth}
+                cards[cid] = answer(cards[cid], right, sure, today)
+                st.session_state["fc_result"] = {"ok": right, "truth": ftruth, "sure": sure}
                 st.rerun()
             if result is not None:
                 (st.success if result["ok"] else st.error)(
                     f"{'Correct' if result['ok'] else 'Not quite'}: {result['truth']}. "
                     f"{MEANING[result['truth']]}")
+                if not result["ok"] and result.get("sure") == "Certain":
+                    st.caption("You were certain and it was wrong. This counts as \"sure but wrong\" "
+                               "in your progress table.")
                 st.caption(f"Next review in {cards[cid]['interval']} day(s).")
                 if st.button("Next card", key="fc_next"):
                     st.session_state["fc_current"] = None
@@ -476,6 +483,7 @@ with tab_cards:
             rows = build_dashboard(list(cards.values()))
             table = pd.DataFrame([{
                 "topic": r["topic"], "cards": r["cards"], "answers": r["seen"], "wrong": r["wrong"],
+                "sure but wrong": r["sure_wrong"],
                 "wrong rate": ("not enough data" if r["wrong_rate"] is None
                                else f"{round(100 * r['wrong_rate'])}%")} for r in rows])
             st.write("Weak topics, worst first. A topic needs 5 answers before it is ranked.")

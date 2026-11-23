@@ -66,6 +66,7 @@ python -m pytest
 - `ml/case_simulator.py`: check 2 to 8 typed drugs against confirmed DDInter pairs
 - `ml/random_case.py`: random practice cases
 - `ml/srs.py`: spaced repetition scheduler
+- `ml/sureness.py`: turns "How sure?" and right or wrong into a scheduler grade
 - `ml/progress.py`: progress download and upload, with validation and merge rule
 - `ml/dashboard.py`: weak-topic dashboard
 - `ml/interact.py`: model for documented versus not documented
@@ -90,6 +91,7 @@ python -m pytest
 - The brand file has two ingredient columns, so medicines with three or more ingredients may show only the first two.
 - DDInter says its data may be incomplete or contain errors.
 - Severity ignores dose, age, kidney or liver function and other conditions.
+- The flashcard scheduler (`ml/srs.py`) follows the SM-2 method, but it was written from memory and has not been checked against the original paper.
 - Predictions are labelled "Predicted, not confirmed" and shown as Low, Medium or High bands, never as percentages. A band says how much a pair looks like pairs DDInter lists, by chemical structure. It is not a risk or severity rating. Low does not mean safe.
 - Pairs where one or both drugs were not seen in training get no prediction. Drugs with no chemical structure on file also get none.
 

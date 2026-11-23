@@ -10,6 +10,8 @@ MAX_TEXT = 2_000_000
 MAX_CARDS = 5000
 MAX_ERRORS = 10
 FIELDS = {"card_id", "ease", "reps", "interval", "due", "seen", "wrong"}
+# Added later. Progress files made before it existed stay valid without it.
+OPTIONAL_FIELDS = {"sure_wrong"}
 ID_RE = re.compile(r"[A-Za-z0-9_.:-]{1,64}")
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 TOP_KEYS = {"app", "version", "cards"}
@@ -24,10 +26,10 @@ def validate_card(card):
     if not isinstance(card, dict):
         return ["not a card"]
     keys = set(card)
-    if keys != FIELDS:
+    if not FIELDS <= keys <= FIELDS | OPTIONAL_FIELDS:
         out = []
         missing = sorted(FIELDS - keys)
-        extra = sorted(str(k) for k in keys - FIELDS)
+        extra = sorted(str(k) for k in keys - FIELDS - OPTIONAL_FIELDS)
         if missing:
             out.append("missing fields: " + ", ".join(missing))
         if extra:
@@ -42,6 +44,10 @@ def validate_card(card):
     ints_ok = all(_is_int(card[k]) and card[k] >= 0 for k in ("reps", "interval", "seen", "wrong"))
     if not ints_ok:
         problems.append("reps, interval, seen and wrong must be whole numbers, 0 or more")
+    sure = card.get("sure_wrong", 0)
+    sure_ok = _is_int(sure) and sure >= 0
+    if not sure_ok:
+        problems.append("sure_wrong must be a whole number, 0 or more")
 
     ease = card["ease"]
     ease_ok = isinstance(ease, (int, float)) and not isinstance(ease, bool)
@@ -65,6 +71,8 @@ def validate_card(card):
             problems.append("interval or seen is too large")
         if card["reps"] + card["wrong"] > card["seen"]:
             problems.append("reps and wrong add up to more than seen")
+        if sure_ok and sure > card["wrong"]:
+            problems.append("sure_wrong is more than wrong")
         if ease_ok and not (MIN_EASE - 1e-6 <= ease <= START_EASE + 0.1 * card["seen"] + 1e-6):
             problems.append("ease is outside what the scheduler can produce")
     return problems

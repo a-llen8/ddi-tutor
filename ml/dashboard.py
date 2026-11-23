@@ -13,10 +13,12 @@ def build_dashboard(cards, min_seen=MIN_SEEN):
     totals = {}
     for c in cards:
         t = topic_of(c["card_id"])
-        row = totals.setdefault(t, {"topic": t, "cards": 0, "seen": 0, "wrong": 0})
+        row = totals.setdefault(t, {"topic": t, "cards": 0, "seen": 0, "wrong": 0,
+                                    "sure_wrong": 0})
         row["cards"] += 1
         row["seen"] += c["seen"]
         row["wrong"] += c["wrong"]
+        row["sure_wrong"] += c.get("sure_wrong", 0)
 
     ranked = []
     too_few = []
@@ -36,12 +38,12 @@ def build_dashboard(cards, min_seen=MIN_SEEN):
 def format_dashboard(rows):
     if not rows:
         return "No cards yet."
-    lines = ["topic | cards | seen | wrong | wrong rate"]
+    lines = ["topic | cards | seen | wrong | sure but wrong | wrong rate"]
     for r in rows:
         if r["wrong_rate"] is None:
             rate = "not enough data"
         else:
             rate = str(round(100 * r["wrong_rate"])) + "%"
         lines.append(" | ".join([r["topic"], str(r["cards"]), str(r["seen"]),
-                                 str(r["wrong"]), rate]))
+                                 str(r["wrong"]), str(r["sure_wrong"]), rate]))
     return "\n".join(lines)
