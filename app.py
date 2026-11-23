@@ -9,14 +9,14 @@ import streamlit as st
 
 from pipeline.lookup import Checker
 from ml.lookup_predictions import PAIRS as LOOKUP_PAIRS, DB as LOOKUP_DB
-from ml.case_simulator import check_case, id_names, MAX_DRUGS
+from ml.lookup_predictions import APP_PAIRS, BANDS, BAND_DRUGS, BandFile, load_pairs_app, names_app
+from ml.case_simulator import check_case, MAX_DRUGS
 from ml.random_case import BRANDS, load_context, random_case
 from ml.srs import new_card, review, due_cards
 from ml.progress import export_progress, import_progress
 from ml.dashboard import build_dashboard
 from ml.spot_pairs import neutral_pairs, score_ticks
-from ml.lookup_predictions import (COVERAGE, covered_id_set, load_coverage, load_pairs,
-                                   lookup, open_db, resolve)
+from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
@@ -41,8 +41,11 @@ def load_checker():
 chk = load_checker()
 
 
+MISSING = "Some data files are missing, so this tab is not available."
+
+
 def random_ready():
-    return os.path.exists(LOOKUP_PAIRS) and os.path.exists(BRANDS)
+    return os.path.exists(APP_PAIRS) and os.path.exists(BRANDS)
 
 
 @st.cache_resource
@@ -51,22 +54,33 @@ def load_random_context():
 
 
 def case_ready():
-    return os.path.exists(LOOKUP_PAIRS)
+    return os.path.exists(APP_PAIRS)
 
 
 @st.cache_resource
 def load_case_names():
-    return id_names()
+    return names_app(load_lookup_data()[0])
 
 
 def lookup_ready():
-    return os.path.exists(LOOKUP_PAIRS) and os.path.exists(LOOKUP_DB)
+    return all(os.path.exists(f) for f in (APP_PAIRS, BANDS, BAND_DRUGS))
 
 
 @st.cache_resource
 def load_lookup_data():
-    ids, sev = load_pairs()
+    ids, sev = load_pairs_app()
     return ids, sev, covered_id_set(ids, load_coverage())
+
+
+@st.cache_resource
+def load_bands():
+    return BandFile()
+
+
+def lookalike_ready():
+    """The look-alike list needs the gitignored build data, so it only shows where that exists."""
+    from ml.splits import INFO, NPZ
+    return all(os.path.exists(f) for f in (LOOKUP_PAIRS, LOOKUP_DB, INFO, NPZ))
 
 
 OUTSIDE_NOTE = ("Some drugs are outside the 8 DDInter class files used here. A pair of two "
@@ -168,7 +182,7 @@ with tab_lookup:
     st.write("Check one pair by generic name. Documented pairs come from DDInter. "
              "A pair with no record may get a prediction band.")
     if not lookup_ready():
-        st.info("Prediction data is not available in this version of the app.")
+        st.info(MISSING)
     else:
         lk_ids, lk_sev, lk_cov = load_lookup_data()
         st.caption(OUTSIDE_NOTE)
@@ -176,19 +190,17 @@ with tab_lookup:
         name_a = lc1.text_input("First drug (generic name)", key="lk_a")
         name_b = lc2.text_input("Second drug (generic name)", key="lk_b")
         if name_a.strip() and name_b.strip():
-            con = open_db()
-            try:
-                lk = lookup(name_a, name_b, lk_ids, lk_sev, con, lk_cov)
-            finally:
-                con.close()
+            lk = lookup(name_a, name_b, lk_ids, lk_sev, load_bands(), lk_cov)
             if lk["status"] == "documented":
                 st.write(BADGE[lk["severity"]])
                 st.write(MEANING[lk["severity"]] + " " + DEFINED_BY)
                 st.caption(lk["text"])
             elif lk["status"] == "predicted":
                 st.info(lk["text"])
-                with st.spinner("Loading look-alike data (first time only)..."):
-                    lkx = lookalike_summary(name_a, name_b)
+                lkx = None
+                if lookalike_ready():
+                    with st.spinner("Loading look-alike data (first time only)..."):
+                        lkx = lookalike_summary(name_a, name_b)
                 if lkx:
                     with st.expander("Which known pairs is this band based on?", expanded=True):
                         st.write(f"The band comes from the {lkx['n']} known pairs that look most "
@@ -221,11 +233,7 @@ def predict_pair(a, b):
     if not lookup_ready():
         return None
     ids, sev, cov = load_lookup_data()
-    con = open_db()
-    try:
-        return lookup(a, b, ids, sev, con, cov)
-    finally:
-        con.close()
+    return lookup(a, b, ids, sev, load_bands(), cov)
 
 
 def render_case(r, pred=None):
@@ -263,7 +271,7 @@ def render_case(r, pred=None):
 
 with tab_case:
     if not case_ready():
-        st.info("The case simulator data is not available in this version of the app.")
+        st.info(MISSING)
     else:
         cs_ids, cs_sev, _ = load_lookup_data()
         cs_names = load_case_names()
@@ -281,7 +289,7 @@ with tab_case:
                      "serious they are, then show the answers.")
             st.caption("Every case has at least one Major pair and at least one pair with no record. At least 2 pairs, and at least 40% of all pairs, have a DDInter record.")
             if not random_ready():
-                st.info("Random cases are not available in this version of the app.")
+                st.info(MISSING)
             else:
                 rc_ctx = load_random_context()
                 if st.button("New random case"):
