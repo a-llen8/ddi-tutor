@@ -4,8 +4,8 @@ import sqlite3
 import numpy as np
 import pandas as pd
 
-from ml.evaluate import tanimoto
-from ml.interact import make_negatives
+from ml.negatives import make_negatives
+from ml.similarity import tanimoto
 from ml.lookup_predictions import PAIRS, load_pairs, lookup, open_db, resolve
 from ml.splits import INFO, NPZ, SEED, load_graded_pairs, random_split
 
@@ -128,7 +128,8 @@ def format_lines(found, ids, names, ra, rb, name_a, name_b):
                 parts.append(f"{typed.strip()} is the same drug")
             else:
                 parts.append(f"closest to {typed.strip()}: {like_name}")
-        lines.append(f"{la} + {lb}: {status}. " + "; ".join(parts) + ".")
+        said = "; ".join(parts)
+        lines.append(f"{la} + {lb}: {status}. " + said[0].upper() + said[1:] + ".")
     return {"n": len(found), "n_documented": sum(1 for f in found if f["documented"]),
             "lines": lines}
 

@@ -7,28 +7,10 @@ from sklearn.metrics import (average_precision_score, balanced_accuracy_score,
 from xgboost import XGBClassifier
 
 from ml.evaluate import knn_predict, pair_features, tanimoto
+from ml.negatives import make_negatives
 from ml.splits import NPZ, PAIRS, cold_start_splits, load_graded_pairs, random_split
 
 OUT = "data/processed/results_interact.csv"
-
-
-def make_negatives(pos, documented, seed):
-    """One negative per positive. Keeps one drug, draws the other by how often drugs appear."""
-    rng = np.random.default_rng(seed)
-    endpoints = np.concatenate([pos["drug_a_id"].to_numpy(), pos["drug_b_id"].to_numpy()])
-    seen = set()
-    rows = []
-    for a, b in zip(pos["drug_a_id"], pos["drug_b_id"]):
-        if rng.random() < 0.5:
-            a = b
-        while True:
-            c = endpoints[rng.integers(len(endpoints))]
-            key = frozenset((a, c))
-            if c != a and key not in documented and key not in seen:
-                break
-        seen.add(key)
-        rows.append((a, c))
-    return pd.DataFrame(rows, columns=["drug_a_id", "drug_b_id"])
 
 
 def scores(y_true, pred, prob=None):

@@ -14,7 +14,7 @@ def test_same_drug_and_closest_drug_in_words():
     assert out["n"] == 1 and out["n_documented"] == 1
     line = out["lines"][0]
     assert line.startswith("Nelarabine + Ixazomib: listed in DDInter.")
-    assert "closest to Abacavir: Nelarabine" in line
+    assert "Closest to Abacavir: Nelarabine" in line
     assert "Ixazomib is the same drug" in line
 
 

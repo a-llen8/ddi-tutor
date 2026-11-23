@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
+from ml.similarity import tanimoto
 from ml.splits import cold_start_splits, load_graded_pairs, random_split
 
 NPZ = "data/processed/fingerprints.npz"
@@ -16,14 +17,6 @@ LABEL = {"Minor": 0, "Moderate": 1, "Major": 2}
 def pair_features(fps, ia, ib):
     """Order-free pair features: 0 = neither drug has the bit, 1 = one, 2 = both."""
     return fps[ia] + fps[ib]
-
-
-def tanimoto(F):
-    F = F.astype(np.float32)
-    inter = F @ F.T
-    n = F.sum(axis=1)
-    union = n[:, None] + n[None, :] - inter
-    return np.where(union > 0, inter / union, 0).astype(np.float32)
 
 
 def knn_predict(S, ia, ib, y, train, test, k=5, chunk=100):
