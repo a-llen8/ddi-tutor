@@ -10,6 +10,36 @@ INK = "#0f172a"
 MUTED = "#5b6478"
 BORDER = "#dde3f0"
 
+HERO_IMG = (
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' "
+    "width='180' height='180' viewBox='0 0 180 180'%3E"
+    "%3Cg fill='none' stroke='white' stroke-opacity='0.16' stroke-width='2'%3E"
+    "%3Cpath d='M22 10v24M10 22h24'/%3E"
+    "%3Ccircle cx='120' cy='36' r='10'/%3E"
+    "%3Ccircle cx='152' cy='62' r='6'/%3E"
+    "%3Ccircle cx='96' cy='70' r='5'/%3E"
+    "%3Cpath d='M128 43l18 14M112 40l-12 25'/%3E"
+    "%3Crect x='30' y='100' width='52' height='20' rx='10' transform='rotate(-30 56 110)'/%3E"
+    "%3Cpath d='M136 126v26M123 139h26'/%3E"
+    "%3Ccircle cx='96' cy='150' r='7'/%3E"
+    "%3C/g%3E%3C/svg%3E\")"
+)
+
+PAGE_IMG = (
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' "
+    "width='240' height='240' viewBox='0 0 240 240'%3E"
+    "%3Cg fill='none' stroke='%230a2a8f' stroke-opacity='0.07' stroke-width='2'%3E"
+    "%3Cpath d='M30 16v28M16 30h28'/%3E"
+    "%3Ccircle cx='160' cy='50' r='12'/%3E"
+    "%3Ccircle cx='200' cy='84' r='7'/%3E"
+    "%3Ccircle cx='128' cy='92' r='6'/%3E"
+    "%3Cpath d='M170 59l24 18M152 56l-18 30'/%3E"
+    "%3Crect x='40' y='130' width='64' height='24' rx='12' transform='rotate(-30 72 142)'/%3E"
+    "%3Cpath d='M180 160v30M165 175h30'/%3E"
+    "%3Ccircle cx='120' cy='200' r='9'/%3E"
+    "%3C/g%3E%3C/svg%3E\")"
+)
+
 CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap');
@@ -17,13 +47,24 @@ CSS = f"""
 .stApp {{
     font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
     color: {INK};
-    background: #ffffff;
+    background-color: #f4f7fd;
+    background-image: {PAGE_IMG};
+    background-size: 240px 240px;
+    background-attachment: fixed;
+}}
+
+[data-testid="stHeader"] {{
+    background: transparent;
 }}
 
 .block-container {{
     max-width: 1180px;
-    padding-top: 2rem;
-    padding-bottom: 4rem;
+    margin-top: 1rem;
+    padding: 2rem 2.2rem 4rem 2.2rem;
+    background: #ffffff;
+    border: 1px solid {BORDER};
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(6, 26, 92, 0.08);
     animation: ddiFade 0.5s ease both;
 }}
 
@@ -168,11 +209,15 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     display: flex;
     align-items: center;
     gap: 1.4rem;
-    padding: 1.6rem 1.8rem;
+    padding: 2rem 2rem;
     margin-bottom: 1.2rem;
     border-radius: 12px;
     color: #ffffff;
-    background: linear-gradient(135deg, {BLUE_DARK} 0%, {BLUE} 70%, {BLUE_MID} 100%);
+    background-image:
+        {HERO_IMG},
+        radial-gradient(circle at 88% 20%, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0) 38%),
+        linear-gradient(135deg, {BLUE_DARK} 0%, {BLUE} 65%, {BLUE_MID} 100%);
+    background-size: 180px 180px, 100% 100%, 100% 100%;
     box-shadow: 0 12px 30px rgba(6, 26, 92, 0.30);
     animation: ddiFade 0.6s ease both;
 }}
@@ -180,6 +225,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     font-size: 2.6rem;
     line-height: 1;
     background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 12px;
     padding: 0.8rem 0.95rem;
 }}
@@ -187,13 +233,13 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     margin: 0;
     padding: 0;
     color: #ffffff;
-    font-size: 2.3rem;
+    font-size: 2.4rem;
     font-weight: 800;
     letter-spacing: -0.01em;
 }}
 .ddi-hero-sub {{
     margin: 0.25rem 0 0.7rem 0;
-    color: rgba(255, 255, 255, 0.90);
+    color: rgba(255, 255, 255, 0.92);
     font-size: 1.05rem;
 }}
 .ddi-badge {{
@@ -335,7 +381,10 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 }}
 
 .ddi-flashcard {{
-    background: linear-gradient(135deg, #ffffff 0%, {BLUE_SOFT} 100%);
+    background-image:
+        {PAGE_IMG},
+        linear-gradient(135deg, #ffffff 0%, {BLUE_SOFT} 100%);
+    background-size: 240px 240px, 100% 100%;
     border: 1px solid {BORDER};
     border-top: 5px solid {BLUE};
     border-radius: 14px;
