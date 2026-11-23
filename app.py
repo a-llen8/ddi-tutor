@@ -22,6 +22,8 @@ from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
+from ui_theme import apply_theme
+apply_theme()
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
 BADGE = {"Major": "🔴 Major", "Moderate": "🟠 Moderate", "Minor": "🟡 Minor", "Unknown": "⚪ Listed, not graded"}
