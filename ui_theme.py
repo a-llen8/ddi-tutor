@@ -2,25 +2,27 @@ import html
 
 import streamlit as st
 
-TEAL = "#0f766e"
-TEAL_DARK = "#115e59"
-TEAL_SOFT = "#e6f4f1"
+BLUE = "#0a2a8f"
+BLUE_DARK = "#061a5c"
+BLUE_MID = "#2f55d4"
+BLUE_SOFT = "#e8edff"
 INK = "#0f172a"
-MUTED = "#64748b"
-BORDER = "#e2e8f0"
+MUTED = "#5b6478"
+BORDER = "#dde3f0"
 
 CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap');
 
 .stApp {{
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
     color: {INK};
+    background: #ffffff;
 }}
 
 .block-container {{
     max-width: 1180px;
-    padding-top: 2.2rem;
+    padding-top: 2rem;
     padding-bottom: 4rem;
     animation: ddiFade 0.5s ease both;
 }}
@@ -44,25 +46,38 @@ footer {{ visibility: hidden; }}
 
 h1, h2, h3 {{
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+    color: {BLUE_DARK};
 }}
 
+a {{ color: {BLUE_MID}; }}
+
+[data-baseweb="tab-list"] {{
+    border-bottom: 1px solid {BORDER};
+    gap: 0.2rem;
+}}
 button[data-baseweb="tab"] {{
     font-weight: 600;
+    font-size: 1rem;
     padding: 0.7rem 1.1rem;
-    border-radius: 10px 10px 0 0;
+    border-radius: 8px 8px 0 0;
     transition: background 0.2s ease, color 0.2s ease;
 }}
 button[data-baseweb="tab"]:hover {{
-    background: {TEAL_SOFT};
-    color: {TEAL_DARK};
+    background: {BLUE_SOFT};
+    color: {BLUE};
 }}
 button[data-baseweb="tab"][aria-selected="true"] {{
-    color: {TEAL};
+    color: {BLUE};
+    background: {BLUE_SOFT};
+}}
+[data-baseweb="tab-highlight"] {{
+    background-color: {BLUE};
+    height: 3px;
 }}
 
 .stButton > button {{
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: 600;
     border: 1px solid {BORDER};
     padding: 0.5rem 1.2rem;
@@ -70,49 +85,49 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 }}
 .stButton > button:hover:not(:disabled) {{
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(15, 118, 110, 0.18);
-    border-color: {TEAL};
-    color: {TEAL};
+    box-shadow: 0 6px 16px rgba(10, 42, 143, 0.18);
+    border-color: {BLUE};
+    color: {BLUE};
 }}
 .stButton > button:active:not(:disabled) {{
     transform: translateY(0);
 }}
 .stButton > button[kind="primary"] {{
-    background: linear-gradient(135deg, {TEAL}, #14b8a6);
+    background: linear-gradient(135deg, {BLUE_DARK}, {BLUE});
     color: #ffffff;
     border: none;
 }}
 .stButton > button[kind="primary"]:hover:not(:disabled) {{
     color: #ffffff;
-    box-shadow: 0 8px 20px rgba(15, 118, 110, 0.35);
+    box-shadow: 0 8px 20px rgba(10, 42, 143, 0.35);
 }}
 
 [data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="textarea"] {{
-    border-radius: 10px;
+    border-radius: 8px;
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }}
 [data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {{
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+    box-shadow: 0 0 0 3px rgba(47, 85, 212, 0.22);
 }}
 
 [data-testid="stAlert"] {{
-    border-radius: 12px;
+    border-radius: 10px;
     animation: ddiFade 0.4s ease both;
 }}
 [data-testid="stExpander"] {{
     border: 1px solid {BORDER};
-    border-radius: 12px;
+    border-radius: 10px;
     background: #ffffff;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     transition: box-shadow 0.2s ease;
 }}
 [data-testid="stExpander"]:hover {{
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 6px 18px rgba(10, 42, 143, 0.10);
 }}
 [data-testid="stMetric"] {{
     background: #ffffff;
     border: 1px solid {BORDER};
-    border-radius: 14px;
+    border-radius: 12px;
     padding: 1rem 1.2rem;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -125,7 +140,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .ddi-card {{
     background: #ffffff;
     border: 1px solid {BORDER};
-    border-radius: 14px;
+    border-radius: 12px;
     padding: 1.1rem 1.3rem;
     margin-bottom: 0.9rem;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
@@ -155,17 +170,17 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     gap: 1.4rem;
     padding: 1.6rem 1.8rem;
     margin-bottom: 1.2rem;
-    border-radius: 18px;
+    border-radius: 12px;
     color: #ffffff;
-    background: linear-gradient(135deg, {TEAL_DARK} 0%, {TEAL} 55%, #14b8a6 100%);
-    box-shadow: 0 12px 30px rgba(15, 118, 110, 0.28);
+    background: linear-gradient(135deg, {BLUE_DARK} 0%, {BLUE} 70%, {BLUE_MID} 100%);
+    box-shadow: 0 12px 30px rgba(6, 26, 92, 0.30);
     animation: ddiFade 0.6s ease both;
 }}
 .ddi-hero-icon {{
     font-size: 2.6rem;
     line-height: 1;
-    background: rgba(255, 255, 255, 0.16);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
     padding: 0.8rem 0.95rem;
 }}
 .ddi-hero-title {{
@@ -174,22 +189,22 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     color: #ffffff;
     font-size: 2.3rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
 }}
 .ddi-hero-sub {{
     margin: 0.25rem 0 0.7rem 0;
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.90);
+    font-size: 1.05rem;
 }}
 .ddi-badge {{
     display: inline-block;
     margin-right: 0.5rem;
     padding: 0.2rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    font-size: 0.78rem;
-    font-weight: 600;
+    border-radius: 6px;
+    background: {BLUE_SOFT};
+    color: {BLUE};
+    font-size: 0.8rem;
+    font-weight: 700;
 }}
 
 .ddi-stats {{
@@ -202,7 +217,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     background: #ffffff;
     border: 1px solid {BORDER};
     border-left: 6px solid {MUTED};
-    border-radius: 14px;
+    border-radius: 12px;
     padding: 0.9rem 1.1rem;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     animation: ddiFade 0.5s ease both;
@@ -219,7 +234,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 }}
 .ddi-stat-label {{
     margin-top: 0.2rem;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 0.03em;
     color: {MUTED};
@@ -232,8 +247,8 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .stat-minor .ddi-stat-value    {{ color: #15803d; }}
 .stat-none     {{ border-left-color: #94a3b8; background: #f8fafc; }}
 .stat-none .ddi-stat-value     {{ color: #475569; }}
-.stat-teal     {{ border-left-color: {TEAL}; background: {TEAL_SOFT}; }}
-.stat-teal .ddi-stat-value     {{ color: {TEAL_DARK}; }}
+.stat-brand    {{ border-left-color: {BLUE}; background: {BLUE_SOFT}; }}
+.stat-brand .ddi-stat-value    {{ color: {BLUE_DARK}; }}
 .stat-due      {{ border-left-color: #f59e0b; background: #fffbeb; }}
 .stat-due .ddi-stat-value      {{ color: #b45309; }}
 
@@ -268,7 +283,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     margin: 0.4rem 0 1rem 0;
 }}
 .ddi-progress-label {{
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: {MUTED};
     margin-bottom: 0.35rem;
@@ -282,7 +297,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .ddi-progress-fill {{
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, {TEAL}, #14b8a6);
+    background: linear-gradient(90deg, {BLUE}, {BLUE_MID});
     transform-origin: left center;
     animation: ddiGrow 0.8s ease both;
 }}
@@ -290,8 +305,8 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .ddi-score {{
     background: #ffffff;
     border: 1px solid {BORDER};
-    border-left: 6px solid {TEAL};
-    border-radius: 14px;
+    border-left: 6px solid {BLUE};
+    border-radius: 12px;
     padding: 1rem 1.3rem;
     margin: 1rem 0 0.4rem 0;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
@@ -303,7 +318,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     justify-content: space-between;
 }}
 .ddi-score-label {{
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 0.03em;
     color: {MUTED};
@@ -311,31 +326,32 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .ddi-score-value {{
     font-size: 2rem;
     font-weight: 800;
-    color: {TEAL_DARK};
+    color: {BLUE_DARK};
 }}
 .ddi-score-pct {{
     font-size: 1.1rem;
     font-weight: 700;
-    color: {TEAL};
+    color: {BLUE_MID};
 }}
 
 .ddi-flashcard {{
-    background: linear-gradient(135deg, #ffffff 0%, {TEAL_SOFT} 100%);
+    background: linear-gradient(135deg, #ffffff 0%, {BLUE_SOFT} 100%);
     border: 1px solid {BORDER};
-    border-radius: 18px;
+    border-top: 5px solid {BLUE};
+    border-radius: 14px;
     padding: 2rem 1.5rem;
     margin: 0.6rem 0 1rem 0;
     text-align: center;
     font-size: 1.6rem;
     font-weight: 700;
-    color: {INK};
+    color: {BLUE_DARK};
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     animation: ddiFlip 0.55s ease both;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }}
 .ddi-flashcard:hover {{
     transform: translateY(-3px);
-    box-shadow: 0 14px 32px rgba(15, 118, 110, 0.18);
+    box-shadow: 0 14px 32px rgba(10, 42, 143, 0.20);
 }}
 
 .ddi-topics {{
@@ -349,7 +365,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 }}
 .ddi-tname {{
     flex: 0 0 170px;
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     font-weight: 600;
     color: {INK};
 }}
@@ -373,11 +389,11 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .ddi-tright:hover, .ddi-twrong:hover {{ filter: brightness(1.12); }}
 .ddi-tcount {{
     flex: 0 0 90px;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     color: {MUTED};
 }}
 .ddi-legend {{
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: {MUTED};
     margin-bottom: 0.5rem;
 }}
@@ -425,7 +441,7 @@ STAT_CLASS = {
     "Minor": "stat-minor",
     "Unknown": "stat-none",
     "No record": "stat-none",
-    "Cards started": "stat-teal",
+    "Cards started": "stat-brand",
     "Due today": "stat-due",
 }
 
