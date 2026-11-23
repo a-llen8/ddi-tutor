@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.1.1
+rdkit==2026.9.1
+scikit-learn==1.9.1
+xgboost==3.4.1
