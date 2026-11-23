@@ -15,6 +15,7 @@ from ml.random_case import BRANDS, load_context, random_case
 from ml.srs import new_card, review, due_cards
 from ml.progress import MAX_CARDS, export_progress, import_progress
 from ml.dashboard import build_dashboard
+from ml.common_deck import MIN_BRANDS, common_drugs, common_pairs, draw_question
 from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
@@ -92,7 +93,7 @@ st.caption("A drug-drug interaction learning tool for medical students. Educatio
 tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"], key="main_tabs", on_change="rerun")
 
 # Streamlit forgets a box when its tab is not open. Writing the value back keeps it.
-for _key in ("search_text", "lk_a", "lk_b", "case_mode", "case_text", "rc_show"):
+for _key in ("search_text", "lk_a", "lk_b", "case_mode", "case_text", "rc_show", "fc_deck"):
     if _key in st.session_state:
         st.session_state[_key] = st.session_state[_key]
 
@@ -350,16 +351,40 @@ def load_fc_index():
     return index
 
 
+DECK_COMMON = "Common drugs"
+DECK_ALL = "All graded pairs"
+
+
+@st.cache_resource
+def load_common_deck():
+    """(graded pairs, card index) where both drugs are in at least MIN_BRANDS current brands."""
+    drugs = common_drugs(pd.read_csv("data/app/medicines.csv.gz"))
+    graded = chk.pairs[chk.pairs["severity"] != "Unknown"]
+    index = {cid: v for cid, v in load_fc_index().items()
+             if v[0].lower() in drugs and v[1].lower() in drugs}
+    return common_pairs(graded, drugs), index
+
+
 with tab_cards:
     if tab_cards.open:
         st.write("Practice the severity DDInter gives to drug pairs. Cards you miss come back sooner. "
                  "Progress is kept only while this page stays open, so download it before you leave.")
-        fc_index = load_fc_index()
+        deck = st.radio("Deck", [DECK_COMMON, DECK_ALL], key="fc_deck", horizontal=True)
+        if deck == DECK_COMMON:
+            st.caption(f"Both medicines are sold in at least {MIN_BRANDS} current brands in the "
+                       "Indian brand list used here.")
+            fc_pool, fc_index = load_common_deck()
+        else:
+            fc_pool, fc_index = None, load_fc_index()
         if "fc_cards" not in st.session_state:
             st.session_state["fc_cards"] = {}
             st.session_state["fc_current"] = None
             st.session_state["fc_result"] = None
             st.session_state["fc_rng"] = np.random.default_rng()
+        if st.session_state.get("fc_deck_seen") != deck:
+            st.session_state["fc_deck_seen"] = deck
+            st.session_state["fc_current"] = None
+            st.session_state["fc_result"] = None
         cards = st.session_state["fc_cards"]
         today = date.today()
 
@@ -369,7 +394,9 @@ with tab_cards:
                 st.session_state["fc_current"] = due[0]["card_id"]
             else:
                 for _ in range(30):
-                    qa, qb, qs = chk.quiz_question(st.session_state["fc_rng"])
+                    fc_rng = st.session_state["fc_rng"]
+                    qa, qb, qs = (chk.quiz_question(fc_rng) if fc_pool is None
+                                  else draw_question(fc_pool, fc_rng))
                     new_id = fc_card_id(qa, qb, qs)
                     if new_id in fc_index and new_id not in cards:
                         cards[new_id] = new_card(new_id, today)
