@@ -89,82 +89,88 @@ OUTSIDE_NOTE = ("Some drugs are outside the 8 DDInter class files used here. A p
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
 
-tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"])
+tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"], key="main_tabs", on_change="rerun")
+
+# Streamlit forgets a box when its tab is not open. Writing the value back keeps it.
+for _key in ("search_text", "lk_a", "lk_b", "case_mode", "case_text", "rc_show"):
+    if _key in st.session_state:
+        st.session_state[_key] = st.session_state[_key]
 
 # ------------------------------------------------------------------ checker
 with tab_check:
-    if "items" not in st.session_state:
-        st.session_state["items"] = []
-
-    c1, c2 = st.columns([3, 2])
-    with c1:
-        q = st.text_input("Search a brand (e.g. Ecosprin) or generic (e.g. warfarin)", key="search_text")
-        options = chk.search(q) if q else []
-        choice = st.selectbox("Matches", options, index=None, placeholder="Type above to see matches")
-        if st.button("Add to list", disabled=choice is None):
-            item = chk.resolve(choice)
-            if item and item.label not in [i.label for i in st.session_state["items"]]:
-                st.session_state["items"].append(item)
-            st.rerun()
-
-    with c2:
-        st.subheader("Medicines to check")
-        if not st.session_state["items"]:
-            st.info("Add at least two medicines.")
-        for n, it in enumerate(st.session_state["items"]):
-            cols = st.columns([5, 1])
-            ingr = ", ".join(it.ingredients + it.unmatched) or "no ingredients found"
-            cols[0].write(f"**{it.label}**  \n_{ingr}_")
-            if cols[1].button("✕", key=f"rm{n}"):
-                st.session_state["items"].pop(n)
-                st.rerun()
-        if st.session_state["items"] and st.button("Clear all"):
+    if tab_check.open:
+        if "items" not in st.session_state:
             st.session_state["items"] = []
-            st.rerun()
 
-    if len(st.session_state["items"]) >= 2:
-        st.divider()
-        res = chk.check(st.session_state["items"])
-        inter = res["interactions"]
+        c1, c2 = st.columns([3, 2])
+        with c1:
+            q = st.text_input("Search a brand (e.g. Ecosprin) or generic (e.g. warfarin)", key="search_text")
+            options = chk.search(q) if q else []
+            choice = st.selectbox("Matches", options, index=None, placeholder="Type above to see matches")
+            if st.button("Add to list", disabled=choice is None):
+                item = chk.resolve(choice)
+                if item and item.label not in [i.label for i in st.session_state["items"]]:
+                    st.session_state["items"].append(item)
+                st.rerun()
 
-        nothing_else = all(res[k].empty for k in ("no_record", "outside_files", "duplicates"))
-        if inter.empty and nothing_else:
-            st.info("No record in the 8 DDInter files used here. "
-                    "Not documented does not mean safe.")
-            st.caption("See 'About & limits'.")
-        elif not inter.empty:
-            graded = inter[inter["severity"] != "Unknown"]
-            ungraded = inter[inter["severity"] == "Unknown"]
-            st.subheader(f"{len(graded)} interaction(s) found")
-            for _, r in graded.iterrows():
-                with st.expander(
-                    f"{BADGE[r['severity']]}: {r['ingredient_1']} + {r['ingredient_2']}"
-                    f"  ({r['item_1']} / {r['item_2']})",
-                    expanded=r["severity"] == "Major",
-                ):
-                    st.write(MEANING[r["severity"]] + " " + DEFINED_BY)
-            if not ungraded.empty:
-                st.subheader("Listed in DDInter, severity not graded")
-                st.caption(MEANING["Unknown"])
-                for _, r in ungraded.iterrows():
-                    st.markdown(f"- {BADGE['Unknown']}: {r['ingredient_1']} + {r['ingredient_2']}"
-                                f"  ({r['item_1']} / {r['item_2']})")
+        with c2:
+            st.subheader("Medicines to check")
+            if not st.session_state["items"]:
+                st.info("Add at least two medicines.")
+            for n, it in enumerate(st.session_state["items"]):
+                cols = st.columns([5, 1])
+                ingr = ", ".join(it.ingredients + it.unmatched) or "no ingredients found"
+                cols[0].write(f"**{it.label}**  \n_{ingr}_")
+                if cols[1].button("✕", key=f"rm{n}"):
+                    st.session_state["items"].pop(n)
+                    st.rerun()
+            if st.session_state["items"] and st.button("Clear all"):
+                st.session_state["items"] = []
+                st.rerun()
 
-        if not res["no_record"].empty:
-            st.info("No record in the 8 DDInter files used here. "
-                    "Not documented does not mean safe:")
-            st.dataframe(res["no_record"], hide_index=True, width="stretch")
-        if not res["outside_files"].empty:
-            st.info("Cannot be checked here: both medicines contain only drugs from the 6 "
-                    "DDInter class files this project does not have. These pairs could never "
-                    "show as documented. That says nothing about whether they interact:")
-            st.dataframe(res["outside_files"], hide_index=True, width="stretch")
-        if not res["duplicates"].empty:
-            st.warning("Same ingredient in more than one medicine (duplicate therapy):")
-            st.dataframe(res["duplicates"], hide_index=True, width="stretch")
-        if not res["no_data"].empty:
-            st.info("Ingredients not covered by DDInter (could not be checked):")
-            st.dataframe(res["no_data"], hide_index=True, width="stretch")
+        if len(st.session_state["items"]) >= 2:
+            st.divider()
+            res = chk.check(st.session_state["items"])
+            inter = res["interactions"]
+
+            nothing_else = all(res[k].empty for k in ("no_record", "outside_files", "duplicates"))
+            if inter.empty and nothing_else:
+                st.info("No record in the 8 DDInter files used here. "
+                        "Not documented does not mean safe.")
+                st.caption("See 'About & limits'.")
+            elif not inter.empty:
+                graded = inter[inter["severity"] != "Unknown"]
+                ungraded = inter[inter["severity"] == "Unknown"]
+                st.subheader(f"{len(graded)} interaction(s) found")
+                for _, r in graded.iterrows():
+                    with st.expander(
+                        f"{BADGE[r['severity']]}: {r['ingredient_1']} + {r['ingredient_2']}"
+                        f"  ({r['item_1']} / {r['item_2']})",
+                        expanded=r["severity"] == "Major",
+                    ):
+                        st.write(MEANING[r["severity"]] + " " + DEFINED_BY)
+                if not ungraded.empty:
+                    st.subheader("Listed in DDInter, severity not graded")
+                    st.caption(MEANING["Unknown"])
+                    for _, r in ungraded.iterrows():
+                        st.markdown(f"- {BADGE['Unknown']}: {r['ingredient_1']} + {r['ingredient_2']}"
+                                    f"  ({r['item_1']} / {r['item_2']})")
+
+            if not res["no_record"].empty:
+                st.info("No record in the 8 DDInter files used here. "
+                        "Not documented does not mean safe:")
+                st.dataframe(res["no_record"], hide_index=True, width="stretch")
+            if not res["outside_files"].empty:
+                st.info("Cannot be checked here: both medicines contain only drugs from the 6 "
+                        "DDInter class files this project does not have. These pairs could never "
+                        "show as documented. That says nothing about whether they interact:")
+                st.dataframe(res["outside_files"], hide_index=True, width="stretch")
+            if not res["duplicates"].empty:
+                st.warning("Same ingredient in more than one medicine (duplicate therapy):")
+                st.dataframe(res["duplicates"], hide_index=True, width="stretch")
+            if not res["no_data"].empty:
+                st.info("Ingredients not covered by DDInter (could not be checked):")
+                st.dataframe(res["no_data"], hide_index=True, width="stretch")
 
 @st.cache_resource
 def load_lookalike_ctx():
@@ -179,54 +185,55 @@ def lookalike_summary(name_a, name_b):
 
 # ------------------------------------------------------------------- lookup
 with tab_lookup:
-    st.write("Check one pair by generic name. Documented pairs come from DDInter. "
-             "A pair with no record may get a prediction band.")
-    if not lookup_ready():
-        st.info(MISSING)
-    else:
-        lk_ids, lk_sev, lk_cov = load_lookup_data()
-        st.caption(OUTSIDE_NOTE)
-        lc1, lc2 = st.columns(2)
-        name_a = lc1.text_input("First drug (generic name)", key="lk_a")
-        name_b = lc2.text_input("Second drug (generic name)", key="lk_b")
-        if name_a.strip() and name_b.strip():
-            lk = lookup(name_a, name_b, lk_ids, lk_sev, load_bands(), lk_cov)
-            if lk["status"] == "documented":
-                st.write(BADGE[lk["severity"]])
-                st.write(MEANING[lk["severity"]] + " " + DEFINED_BY)
-                st.caption(lk["text"])
-            elif lk["status"] == "predicted":
-                st.info(lk["text"])
-                lkx = None
-                if lookalike_ready():
-                    with st.spinner("Loading look-alike data (first time only)..."):
-                        lkx = lookalike_summary(name_a, name_b)
-                if lkx:
-                    with st.expander("Which known pairs is this band based on?", expanded=True):
-                        st.write(f"The band comes from the {lkx['n']} known pairs that look most "
-                                 f"like this one by chemical structure. {lkx['n_documented']} of "
-                                 "them are listed in DDInter.")
-                        for ln in lkx["lines"]:
-                            st.markdown("- " + ln)
-                        st.caption("Chemical structure is not the same as drug class or effect. "
-                                   "A pair with no record here is a sample pair the model used. "
-                                   "It is not proof that the pair is safe.")
-            elif lk["status"] in ("no_prediction", "outside_files"):
-                st.info(lk["text"])
-            else:
-                st.warning(lk["text"])
-                if lk["status"] == "not_found":
-                    for typed in (name_a, name_b):
-                        if resolve(typed, lk_ids)[2] is None:
-                            continue
-                        hits = [b for b in chk.search(typed, limit=3)
-                                if not b.endswith(" (generic)")
-                                and b.lower().startswith(typed.strip().lower())]
-                        item = chk.resolve(hits[0]) if hits else None
-                        if item and item.ingredients:
-                            st.caption(f"{typed.strip()} looks like a brand name ({item.label}). "
-                                       f"Its ingredients: {', '.join(item.ingredients)}. "
-                                       "Enter a generic name here, or use the Interaction checker tab for brands.")
+    if tab_lookup.open:
+        st.write("Check one pair by generic name. Documented pairs come from DDInter. "
+                 "A pair with no record may get a prediction band.")
+        if not lookup_ready():
+            st.info(MISSING)
+        else:
+            lk_ids, lk_sev, lk_cov = load_lookup_data()
+            st.caption(OUTSIDE_NOTE)
+            lc1, lc2 = st.columns(2)
+            name_a = lc1.text_input("First drug (generic name)", key="lk_a")
+            name_b = lc2.text_input("Second drug (generic name)", key="lk_b")
+            if name_a.strip() and name_b.strip():
+                lk = lookup(name_a, name_b, lk_ids, lk_sev, load_bands(), lk_cov)
+                if lk["status"] == "documented":
+                    st.write(BADGE[lk["severity"]])
+                    st.write(MEANING[lk["severity"]] + " " + DEFINED_BY)
+                    st.caption(lk["text"])
+                elif lk["status"] == "predicted":
+                    st.info(lk["text"])
+                    lkx = None
+                    if lookalike_ready():
+                        with st.spinner("Loading look-alike data (first time only)..."):
+                            lkx = lookalike_summary(name_a, name_b)
+                    if lkx:
+                        with st.expander("Which known pairs is this band based on?", expanded=True):
+                            st.write(f"The band comes from the {lkx['n']} known pairs that look most "
+                                     f"like this one by chemical structure. {lkx['n_documented']} of "
+                                     "them are listed in DDInter.")
+                            for ln in lkx["lines"]:
+                                st.markdown("- " + ln)
+                            st.caption("Chemical structure is not the same as drug class or effect. "
+                                       "A pair with no record here is a sample pair the model used. "
+                                       "It is not proof that the pair is safe.")
+                elif lk["status"] in ("no_prediction", "outside_files"):
+                    st.info(lk["text"])
+                else:
+                    st.warning(lk["text"])
+                    if lk["status"] == "not_found":
+                        for typed in (name_a, name_b):
+                            if resolve(typed, lk_ids)[2] is None:
+                                continue
+                            hits = [b for b in chk.search(typed, limit=3)
+                                    if not b.endswith(" (generic)")
+                                    and b.lower().startswith(typed.strip().lower())]
+                            item = chk.resolve(hits[0]) if hits else None
+                            if item and item.ingredients:
+                                st.caption(f"{typed.strip()} looks like a brand name ({item.label}). "
+                                           f"Its ingredients: {', '.join(item.ingredients)}. "
+                                           "Enter a generic name here, or use the Interaction checker tab for brands.")
 
 # --------------------------------------------------------------- case simulator
 def predict_pair(a, b):
@@ -270,59 +277,60 @@ def render_case(r, pred=None):
 
 
 with tab_case:
-    if not case_ready():
-        st.info(MISSING)
-    else:
-        cs_ids, cs_sev, _ = load_lookup_data()
-        cs_names = load_case_names()
-        mode = st.radio("Mode", ["Type my own", "Random case"], horizontal=True, key="case_mode")
-        if mode == "Type my own":
-            st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
-                     "Documented pairs come from DDInter. A pair with no record may also show a "
-                     "predicted band, always labelled Predicted, not confirmed.")
-            text = st.text_area("Drugs, one per line", key="case_text", height=180)
-            lines = [x.strip() for x in text.splitlines() if x.strip()]
-            if lines:
-                render_case(check_case(lines, cs_ids, cs_sev, cs_names), predict_pair)
+    if tab_case.open:
+        if not case_ready():
+            st.info(MISSING)
         else:
-            st.write("A random case of 3 to 5 drugs. Work out which pairs interact and how "
-                     "serious they are, then show the answers.")
-            st.caption("Every case has at least one Major pair and at least one pair with no record. At least 2 pairs, and at least 40% of all pairs, have a DDInter record.")
-            if not random_ready():
-                st.info(MISSING)
+            cs_ids, cs_sev, _ = load_lookup_data()
+            cs_names = load_case_names()
+            mode = st.radio("Mode", ["Type my own", "Random case"], horizontal=True, key="case_mode")
+            if mode == "Type my own":
+                st.write(f"Type 2 to {MAX_DRUGS} generic names, one per line. "
+                         "Documented pairs come from DDInter. A pair with no record may also show a "
+                         "predicted band, always labelled Predicted, not confirmed.")
+                text = st.text_area("Drugs, one per line", key="case_text", height=180)
+                lines = [x.strip() for x in text.splitlines() if x.strip()]
+                if lines:
+                    render_case(check_case(lines, cs_ids, cs_sev, cs_names), predict_pair)
             else:
-                rc_ctx = load_random_context()
-                if st.button("New random case"):
-                    seed = int(np.random.default_rng().integers(1_000_000_000))
-                    rc_names, _ = random_case(rc_ctx, seed)
-                    st.session_state["rc_names"] = rc_names
-                    st.session_state["rc_show"] = False
-                    st.session_state["rc_n"] = st.session_state.get("rc_n", 0) + 1
-                if "rc_names" in st.session_state:
-                    rc_names = st.session_state["rc_names"]
-                    if rc_names is None:
-                        st.warning("No valid case was found this time. Please try again.")
-                    else:
-                        st.subheader("Case")
-                        for n in rc_names:
-                            st.write("- " + n)
-                        rc_n = st.session_state.get("rc_n", 0)
-                        rc_r = check_case(rc_names, cs_ids, cs_sev, cs_names)
-                        if rc_r["status"] == "ok":
-                            st.write("Which pairs do you think are Major? Tick them.")
-                            rc_ticked = set()
-                            for i, (a, b) in enumerate(neutral_pairs(rc_r)):
-                                if st.checkbox(f"{a} + {b}", key=f"rc_tick_{rc_n}_{i}"):
-                                    rc_ticked.add(frozenset((a, b)))
-                            if st.checkbox("Check my ticks", key=f"rc_done_{rc_n}"):
-                                sc = score_ticks(rc_r, rc_ticked)
-                                st.write(f"Major pairs found: {len(sc['found'])} of {sc['n_major']}.")
-                                if sc["missed"]:
-                                    st.warning("Missed Major: " + ", ".join(sc["missed"]))
-                                if sc["false_alarms"]:
-                                    st.info("Ticked, but not Major: " + ", ".join(sc["false_alarms"]))
-                        if st.checkbox("Show answers", key="rc_show"):
-                            render_case(check_case(rc_names, cs_ids, cs_sev, cs_names), predict_pair)
+                st.write("A random case of 3 to 5 drugs. Work out which pairs interact and how "
+                         "serious they are, then show the answers.")
+                st.caption("Every case has at least one Major pair and at least one pair with no record. At least 2 pairs, and at least 40% of all pairs, have a DDInter record.")
+                if not random_ready():
+                    st.info(MISSING)
+                else:
+                    rc_ctx = load_random_context()
+                    if st.button("New random case"):
+                        seed = int(np.random.default_rng().integers(1_000_000_000))
+                        rc_names, _ = random_case(rc_ctx, seed)
+                        st.session_state["rc_names"] = rc_names
+                        st.session_state["rc_show"] = False
+                        st.session_state["rc_n"] = st.session_state.get("rc_n", 0) + 1
+                    if "rc_names" in st.session_state:
+                        rc_names = st.session_state["rc_names"]
+                        if rc_names is None:
+                            st.warning("No valid case was found this time. Please try again.")
+                        else:
+                            st.subheader("Case")
+                            for n in rc_names:
+                                st.write("- " + n)
+                            rc_n = st.session_state.get("rc_n", 0)
+                            rc_r = check_case(rc_names, cs_ids, cs_sev, cs_names)
+                            if rc_r["status"] == "ok":
+                                st.write("Which pairs do you think are Major? Tick them.")
+                                rc_ticked = set()
+                                for i, (a, b) in enumerate(neutral_pairs(rc_r)):
+                                    if st.checkbox(f"{a} + {b}", key=f"rc_tick_{rc_n}_{i}"):
+                                        rc_ticked.add(frozenset((a, b)))
+                                if st.checkbox("Check my ticks", key=f"rc_done_{rc_n}"):
+                                    sc = score_ticks(rc_r, rc_ticked)
+                                    st.write(f"Major pairs found: {len(sc['found'])} of {sc['n_major']}.")
+                                    if sc["missed"]:
+                                        st.warning("Missed Major: " + ", ".join(sc["missed"]))
+                                    if sc["false_alarms"]:
+                                        st.info("Ticked, but not Major: " + ", ".join(sc["false_alarms"]))
+                            if st.checkbox("Show answers", key="rc_show"):
+                                render_case(check_case(rc_names, cs_ids, cs_sev, cs_names), predict_pair)
 
 # ------------------------------------------------------------------- flashcards
 def fc_card_id(a, b, truth):
@@ -343,138 +351,141 @@ def load_fc_index():
 
 
 with tab_cards:
-    st.write("Practice the severity DDInter gives to drug pairs. Cards you miss come back sooner. "
-             "Progress is kept only while this page stays open, so download it before you leave.")
-    fc_index = load_fc_index()
-    if "fc_cards" not in st.session_state:
-        st.session_state["fc_cards"] = {}
-        st.session_state["fc_current"] = None
-        st.session_state["fc_result"] = None
-        st.session_state["fc_rng"] = np.random.default_rng()
-    cards = st.session_state["fc_cards"]
-    today = date.today()
+    if tab_cards.open:
+        st.write("Practice the severity DDInter gives to drug pairs. Cards you miss come back sooner. "
+                 "Progress is kept only while this page stays open, so download it before you leave.")
+        fc_index = load_fc_index()
+        if "fc_cards" not in st.session_state:
+            st.session_state["fc_cards"] = {}
+            st.session_state["fc_current"] = None
+            st.session_state["fc_result"] = None
+            st.session_state["fc_rng"] = np.random.default_rng()
+        cards = st.session_state["fc_cards"]
+        today = date.today()
 
-    if st.session_state["fc_current"] is None:
-        due = [c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index]
-        if due:
-            st.session_state["fc_current"] = due[0]["card_id"]
-        else:
-            for _ in range(30):
-                qa, qb, qs = chk.quiz_question(st.session_state["fc_rng"])
-                new_id = fc_card_id(qa, qb, qs)
-                if new_id in fc_index and new_id not in cards:
-                    cards[new_id] = new_card(new_id, today)
-                    st.session_state["fc_current"] = new_id
-                    break
-    cid = st.session_state["fc_current"]
-
-    if cid is None:
-        st.info("No card is available right now.")
-    else:
-        fa, fb, ftruth = fc_index[cid]
-        st.subheader(f"{fa.title()}  +  {fb.title()}")
-        result = st.session_state["fc_result"]
-        guess = st.radio("Severity DDInter gives this pair", ["Major", "Moderate", "Minor"],
-                         horizontal=True, index=None, key=f"fc_guess_{cid}",
-                         disabled=result is not None)
-        if st.button("Check answer", key="fc_check", disabled=guess is None or result is not None):
-            right = guess == ftruth
-            cards[cid] = review(cards[cid], 4 if right else 1, today)
-            st.session_state["fc_result"] = {"ok": right, "truth": ftruth}
-            st.rerun()
-        if result is not None:
-            (st.success if result["ok"] else st.error)(
-                f"{'Correct' if result['ok'] else 'Not quite'}: {result['truth']}. "
-                f"{MEANING[result['truth']]}")
-            st.caption(f"Next review in {cards[cid]['interval']} day(s).")
-            if st.button("Next card", key="fc_next"):
-                st.session_state["fc_current"] = None
-                st.session_state["fc_result"] = None
-                st.rerun()
-
-    st.divider()
-    st.subheader("Your progress")
-    n_due = len([c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index])
-    st.write(f"Cards started: {len(cards)}. Due today: {n_due}.")
-    if cards:
-        st.download_button("Download progress", data=export_progress(list(cards.values())),
-                           file_name="ddi-tutor-progress.json", mime="application/json")
-    up = st.file_uploader("Upload a progress file", type=["json"], key="fc_upload")
-    if up is not None:
-        marker = f"{up.name}:{up.size}"
-        if st.session_state.get("fc_upload_marker") != marker:
-            st.session_state["fc_upload_marker"] = marker
-            try:
-                up_text = up.getvalue().decode("utf-8")
-            except UnicodeDecodeError:
-                up_text = None
-            if up_text is None:
-                st.session_state["fc_upload_msg"] = ("error", ["the file is not text"])
+        if st.session_state["fc_current"] is None:
+            due = [c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index]
+            if due:
+                st.session_state["fc_current"] = due[0]["card_id"]
             else:
-                res = import_progress(up_text, list(cards.values()))
-                if res["ok"]:
-                    st.session_state["fc_cards"] = {c["card_id"]: c for c in res["cards"]}
+                for _ in range(30):
+                    qa, qb, qs = chk.quiz_question(st.session_state["fc_rng"])
+                    new_id = fc_card_id(qa, qb, qs)
+                    if new_id in fc_index and new_id not in cards:
+                        cards[new_id] = new_card(new_id, today)
+                        st.session_state["fc_current"] = new_id
+                        break
+        cid = st.session_state["fc_current"]
+
+        if cid is None:
+            st.info("No card is available right now.")
+        else:
+            fa, fb, ftruth = fc_index[cid]
+            st.subheader(f"{fa.title()}  +  {fb.title()}")
+            result = st.session_state["fc_result"]
+            guess = st.radio("Severity DDInter gives this pair", ["Major", "Moderate", "Minor"],
+                             horizontal=True, index=None, key=f"fc_guess_{cid}",
+                             disabled=result is not None)
+            if st.button("Check answer", key="fc_check", disabled=guess is None or result is not None):
+                right = guess == ftruth
+                cards[cid] = review(cards[cid], 4 if right else 1, today)
+                st.session_state["fc_result"] = {"ok": right, "truth": ftruth}
+                st.rerun()
+            if result is not None:
+                (st.success if result["ok"] else st.error)(
+                    f"{'Correct' if result['ok'] else 'Not quite'}: {result['truth']}. "
+                    f"{MEANING[result['truth']]}")
+                st.caption(f"Next review in {cards[cid]['interval']} day(s).")
+                if st.button("Next card", key="fc_next"):
                     st.session_state["fc_current"] = None
                     st.session_state["fc_result"] = None
-                    st.session_state["fc_upload_msg"] = (
-                        "ok", f"Imported. Added {res['added']}, updated {res['updated']}, "
-                              f"kept {res['kept']}.")
-                else:
-                    st.session_state["fc_upload_msg"] = ("error", res["errors"])
-            st.rerun()
-    up_msg = st.session_state.get("fc_upload_msg")
-    if up_msg:
-        if up_msg[0] == "ok":
-            st.success(up_msg[1])
-        else:
-            for m in up_msg[1]:
-                st.warning(m)
+                    st.rerun()
 
-    if cards:
-        rows = build_dashboard(list(cards.values()))
-        table = pd.DataFrame([{
-            "topic": r["topic"], "cards": r["cards"], "answers": r["seen"], "wrong": r["wrong"],
-            "wrong rate": ("not enough data" if r["wrong_rate"] is None
-                           else f"{round(100 * r['wrong_rate'])}%")} for r in rows])
-        st.write("Weak topics, worst first. A topic needs 5 answers before it is ranked.")
-        st.dataframe(table, hide_index=True)
+        st.divider()
+        st.subheader("Your progress")
+        n_due = len([c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index])
+        st.write(f"Cards started: {len(cards)}. Due today: {n_due}.")
+        if cards:
+            st.download_button("Download progress", data=export_progress(list(cards.values())),
+                               file_name="ddi-tutor-progress.json", mime="application/json")
+        up = st.file_uploader("Upload a progress file", type=["json"], key="fc_upload")
+        if up is not None:
+            marker = f"{up.name}:{up.size}"
+            if st.session_state.get("fc_upload_marker") != marker:
+                st.session_state["fc_upload_marker"] = marker
+                try:
+                    up_text = up.getvalue().decode("utf-8")
+                except UnicodeDecodeError:
+                    up_text = None
+                if up_text is None:
+                    st.session_state["fc_upload_msg"] = ("error", ["the file is not text"])
+                else:
+                    res = import_progress(up_text, list(cards.values()))
+                    if res["ok"]:
+                        st.session_state["fc_cards"] = {c["card_id"]: c for c in res["cards"]}
+                        st.session_state["fc_current"] = None
+                        st.session_state["fc_result"] = None
+                        st.session_state["fc_upload_msg"] = (
+                            "ok", f"Imported. Added {res['added']}, updated {res['updated']}, "
+                                  f"kept {res['kept']}.")
+                    else:
+                        st.session_state["fc_upload_msg"] = ("error", res["errors"])
+                st.rerun()
+        up_msg = st.session_state.get("fc_upload_msg")
+        if up_msg:
+            if up_msg[0] == "ok":
+                st.success(up_msg[1])
+            else:
+                for m in up_msg[1]:
+                    st.warning(m)
+
+        if cards:
+            rows = build_dashboard(list(cards.values()))
+            table = pd.DataFrame([{
+                "topic": r["topic"], "cards": r["cards"], "answers": r["seen"], "wrong": r["wrong"],
+                "wrong rate": ("not enough data" if r["wrong_rate"] is None
+                               else f"{round(100 * r['wrong_rate'])}%")} for r in rows])
+            st.write("Weak topics, worst first. A topic needs 5 answers before it is ranked.")
+            st.dataframe(table, hide_index=True)
 
 # --------------------------------------------------------------------- quiz
 with tab_quiz:
-    st.write("Guess the severity DDInter assigns to each pair.")
-    if "rng" not in st.session_state:
-        st.session_state["rng"] = np.random.default_rng()
-        st.session_state["score"] = [0, 0]
-        st.session_state["quiz_q"] = chk.quiz_question(st.session_state["rng"])
-        st.session_state["answered"] = None
-
-    a, b, truth = st.session_state["quiz_q"]
-    st.subheader(f"{a.title()}  +  {b.title()}")
-    guess = st.radio("Severity", ["Major", "Moderate", "Minor"], horizontal=True, index=None,
-                     key=f"guess_{a}_{b}")
-
-    if st.button("Check answer", disabled=guess is None or st.session_state["answered"] is not None):
-        st.session_state["answered"] = guess == truth
-        st.session_state["score"][1] += 1
-        st.session_state["score"][0] += int(guess == truth)
-        st.rerun()
-
-    if st.session_state["answered"] is not None:
-        (st.success if st.session_state["answered"] else st.error)(
-            f"{'Correct' if st.session_state['answered'] else 'Not quite'}: {truth}. {MEANING[truth]}"
-        )
-        if st.button("Next question"):
+    if tab_quiz.open:
+        st.write("Guess the severity DDInter assigns to each pair.")
+        if "rng" not in st.session_state:
+            st.session_state["rng"] = np.random.default_rng()
+            st.session_state["score"] = [0, 0]
             st.session_state["quiz_q"] = chk.quiz_question(st.session_state["rng"])
             st.session_state["answered"] = None
+
+        a, b, truth = st.session_state["quiz_q"]
+        st.subheader(f"{a.title()}  +  {b.title()}")
+        guess = st.radio("Severity", ["Major", "Moderate", "Minor"], horizontal=True, index=None,
+                         key=f"guess_{a}_{b}")
+
+        if st.button("Check answer", disabled=guess is None or st.session_state["answered"] is not None):
+            st.session_state["answered"] = guess == truth
+            st.session_state["score"][1] += 1
+            st.session_state["score"][0] += int(guess == truth)
             st.rerun()
 
-    s, t = st.session_state["score"]
-    st.caption(f"Score: {s} / {t}")
+        if st.session_state["answered"] is not None:
+            (st.success if st.session_state["answered"] else st.error)(
+                f"{'Correct' if st.session_state['answered'] else 'Not quite'}: {truth}. {MEANING[truth]}"
+            )
+            if st.button("Next question"):
+                st.session_state["quiz_q"] = chk.quiz_question(st.session_state["rng"])
+                st.session_state["answered"] = None
+                st.rerun()
+
+        s, t = st.session_state["score"]
+        st.caption(f"Score: {s} / {t}")
 
 # -------------------------------------------------------------------- about
 with tab_about:
-    st.markdown(
-        """
+    if tab_about.open:
+        st.markdown(
+            """
 **Data sources:** DDInter (drug-drug interaction database) and the A-Z Medicines Dataset of India (brand to ingredient mapping).
 
 **Important limits**
@@ -485,4 +496,4 @@ with tab_about:
 - Brand names are mapped to DDInter ingredient names automatically; some ingredients (especially Indian-market ones) are not covered and are shown as "could not be checked".
 - Severity levels follow DDInter and do not account for dose, patient age, kidney or liver function, or other conditions.
 """
-    )
+        )
