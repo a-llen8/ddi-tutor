@@ -20,7 +20,7 @@ from ml.lookup_predictions import (COVERAGE, covered_id_set, load_coverage, load
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
 
-BADGE = {"Major": "🔴 Major", "Moderate": "🟠 Moderate", "Minor": "🟡 Minor", "Unknown": "⚪ Unknown"}
+BADGE = {"Major": "🔴 Major", "Moderate": "🟠 Moderate", "Minor": "🟡 Minor", "Unknown": "⚪ Listed, not graded"}
 DEFINED_BY = "(DDInter's definition.)"
 
 MEANING = {
@@ -119,14 +119,22 @@ with tab_check:
                     "Not documented does not mean safe.")
             st.caption("See 'About & limits'.")
         elif not inter.empty:
-            st.subheader(f"{len(inter)} interaction(s) found")
-            for _, r in inter.iterrows():
+            graded = inter[inter["severity"] != "Unknown"]
+            ungraded = inter[inter["severity"] == "Unknown"]
+            st.subheader(f"{len(graded)} interaction(s) found")
+            for _, r in graded.iterrows():
                 with st.expander(
                     f"{BADGE[r['severity']]}: {r['ingredient_1']} + {r['ingredient_2']}"
                     f"  ({r['item_1']} / {r['item_2']})",
                     expanded=r["severity"] == "Major",
                 ):
                     st.write(MEANING[r["severity"]] + " " + DEFINED_BY)
+            if not ungraded.empty:
+                st.subheader("Listed in DDInter, severity not graded")
+                st.caption(MEANING["Unknown"])
+                for _, r in ungraded.iterrows():
+                    st.markdown(f"- {BADGE['Unknown']}: {r['ingredient_1']} + {r['ingredient_2']}"
+                                f"  ({r['item_1']} / {r['item_2']})")
 
         if not res["no_record"].empty:
             st.info("No record in the 8 DDInter files used here. "
