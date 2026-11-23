@@ -18,6 +18,39 @@ class Item:
     unmatched: list        # ingredients we could not map to DDInter
 
 
+def build_variants(meds):
+    """One row per brand name and ingredient set, each with a display label.
+
+    A brand name that is sold with different ingredient sets keeps every variant and shows its
+    ingredients in the label. A brand with every row discontinued gets "(discontinued)".
+    """
+    meds = meds.copy()
+    meds["key"] = meds["brand"].str.lower()
+    shown, same = [], []
+    for i1, d1, i2, d2 in zip(meds["ing1"], meds["ing1_dd"], meds["ing2"], meds["ing2_dd"]):
+        got = []
+        for raw, dd in ((i1, d1), (i2, d2)):
+            if pd.isna(raw):
+                continue
+            name = dd if pd.notna(dd) else raw
+            if name not in got:
+                got.append(name)
+        shown.append(" + ".join(got) or "no ingredient listed")
+        same.append(" + ".join(sorted(got)))
+    meds["_shown"] = shown
+    meds["_same"] = same
+    if "discontinued" in meds.columns:
+        gone = meds["discontinued"].astype(str).str.lower().eq("true")
+    else:
+        gone = pd.Series(False, index=meds.index)
+    meds["_gone"] = gone.groupby([meds["key"], meds["_same"]]).transform("all")
+    meds = meds.drop_duplicates(["key", "_same"]).reset_index(drop=True)
+    several = meds.groupby("key")["key"].transform("size") > 1
+    label = meds["brand"].where(~several, meds["brand"] + " (" + meds["_shown"] + ")")
+    meds["label"] = label.where(~meds["_gone"], label + " (discontinued)")
+    return meds
+
+
 class Checker:
     def __init__(self, pairs: pd.DataFrame, meds: pd.DataFrame, coverage: dict = None):
         self.pairs = pairs
@@ -32,10 +65,11 @@ class Checker:
         self.generics = sorted(set(pairs["drug_a"]) | set(pairs["drug_b"]))
         self._generic_set = set(self.generics)
 
-        meds = meds.copy()
-        meds["key"] = meds["brand"].str.lower()
-        self.meds = meds.drop_duplicates("key").reset_index(drop=True)
-        self._by_key = self.meds.set_index("key")
+        self.meds = build_variants(meds)
+        self._by_label = {lab.lower(): i for i, lab in enumerate(self.meds["label"])}
+        self._first_of_key = {}
+        for i, k in enumerate(self.meds["key"]):
+            self._first_of_key.setdefault(k, i)
         self._keys = self.meds["key"].tolist()
 
     # ---------- searching ----------
@@ -60,7 +94,7 @@ class Checker:
         for g in aliased + [g for g in self.generics if g.startswith(q)]:
             add(f"{g} (generic)")
         # 2. brands that start with the text
-        starts = self.meds[self.meds["key"].str.startswith(q)]["brand"]
+        starts = self.meds[self.meds["key"].str.startswith(q)]["label"]
         for b in starts:
             add(b)
         # 3. generics that contain the text
@@ -68,16 +102,16 @@ class Checker:
             if q in g:
                 add(f"{g} (generic)")
         # 4. brands that contain the text
-        has = self.meds[self.meds["key"].str.contains(q, regex=False)]["brand"]
+        has = self.meds[self.meds["key"].str.contains(q, regex=False)]["label"]
         for b in has:
             add(b)
         if len(out) >= limit:
             return out[:limit]
         # 5. typo fallback, only when there are few matches
         if len(out) < 3:
-            for key, score, _ in process.extract(q, self._keys, scorer=fuzz.WRatio, limit=limit):
+            for _, score, idx in process.extract(q, self._keys, scorer=fuzz.WRatio, limit=limit):
                 if score >= 80:
-                    b = self._by_key.loc[key, "brand"]
+                    b = self.meds.at[idx, "label"]
                     if b not in out:
                         out.append(b)
         return out[:limit]
@@ -88,15 +122,16 @@ class Checker:
             g = label[: -len(" (generic)")].lower()
             return Item(label=g, ingredients=[g], unmatched=[]) if g in self._generic_set else None
         key = label.lower()
-        if key not in self._by_key.index:
+        i = self._by_label.get(key, self._first_of_key.get(key))
+        if i is None:
             return None
-        row = self._by_key.loc[key]
+        row = self.meds.loc[i]
         ing, unmatched = [], []
         for raw, dd in ((row["ing1"], row["ing1_dd"]), (row["ing2"], row["ing2_dd"])):
             if pd.isna(raw):
                 continue
             (ing if pd.notna(dd) else unmatched).append(dd if pd.notna(dd) else raw)
-        return Item(label=row["brand"], ingredients=list(dict.fromkeys(ing)), unmatched=unmatched)
+        return Item(label=row["label"], ingredients=list(dict.fromkeys(ing)), unmatched=unmatched)
 
     # ---------- coverage ----------
     def is_covered(self, name: str) -> bool:
