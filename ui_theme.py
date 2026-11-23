@@ -179,6 +179,50 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     font-size: 0.78rem;
     font-weight: 600;
 }}
+
+.ddi-stats {{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.9rem;
+    margin: 0.6rem 0 1rem 0;
+}}
+@media (max-width: 700px) {{
+    .ddi-stats {{ grid-template-columns: repeat(2, 1fr); }}
+}}
+.ddi-stat {{
+    background: #ffffff;
+    border: 1px solid {BORDER};
+    border-left: 6px solid {MUTED};
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    animation: ddiFade 0.5s ease both;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}}
+.ddi-stat:hover {{
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+}}
+.ddi-stat-value {{
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
+}}
+.ddi-stat-label {{
+    margin-top: 0.2rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: {MUTED};
+}}
+.stat-major    {{ border-left-color: #dc2626; background: #fff5f5; }}
+.stat-major .ddi-stat-value    {{ color: #b91c1c; }}
+.stat-moderate {{ border-left-color: #f59e0b; background: #fffbeb; }}
+.stat-moderate .ddi-stat-value {{ color: #b45309; }}
+.stat-minor    {{ border-left-color: #22c55e; background: #f3fbf5; }}
+.stat-minor .ddi-stat-value    {{ color: #15803d; }}
+.stat-none     {{ border-left-color: #94a3b8; background: #f8fafc; }}
+.stat-none .ddi-stat-value     {{ color: #475569; }}
 </style>
 """
 
@@ -208,3 +252,23 @@ def stat_cards(items):
     cols = st.columns(len(items))
     for col, (label, value) in zip(cols, items):
         col.metric(label, value)
+
+
+STAT_CLASS = {
+    "Major": "stat-major",
+    "Moderate": "stat-moderate",
+    "Minor": "stat-minor",
+    "Unknown": "stat-none",
+}
+
+
+def severity_stats(counts):
+    """Colored stat cards. counts is a dict like {"Major": 2, "Moderate": 1, ...}."""
+    cards = "".join(
+        '<div class="ddi-stat ' + STAT_CLASS.get(label, "stat-none") + '">'
+        '<div class="ddi-stat-value">' + html.escape(str(value)) + "</div>"
+        '<div class="ddi-stat-label">' + html.escape(str(label)) + "</div>"
+        "</div>"
+        for label, value in counts.items()
+    )
+    st.markdown('<div class="ddi-stats">' + cards + "</div>", unsafe_allow_html=True)

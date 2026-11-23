@@ -22,7 +22,7 @@ from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
-from ui_theme import apply_theme, hero
+from ui_theme import apply_theme, hero, severity_stats
 apply_theme()
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
@@ -152,6 +152,12 @@ with tab_check:
                 graded = inter[inter["severity"] != "Unknown"]
                 ungraded = inter[inter["severity"] == "Unknown"]
                 st.subheader(f"{len(graded)} interaction(s) found")
+                severity_stats({
+                    "Major": int((graded["severity"] == "Major").sum()),
+                    "Moderate": int((graded["severity"] == "Moderate").sum()),
+                    "Minor": int((graded["severity"] == "Minor").sum()),
+                    "Unknown": len(ungraded),
+                })
                 st.markdown(severity_summary(graded["severity"]), unsafe_allow_html=True)
                 for _, r in graded.iterrows():
                     with st.expander(
@@ -159,6 +165,7 @@ with tab_check:
                         f"  ({r['item_1']} / {r['item_2']})",
                         expanded=r["severity"] == "Major",
                     ):
+                        st.markdown(severity_pill(r["severity"]), unsafe_allow_html=True)
                         st.write(MEANING[r["severity"]] + " " + DEFINED_BY)
                 if not ungraded.empty:
                     st.subheader("Listed in DDInter, severity not graded")
