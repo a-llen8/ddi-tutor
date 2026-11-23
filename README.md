@@ -22,12 +22,14 @@ unclear. If you are a rights holder and want a file removed, please open an issu
 
 ## Setup (Windows)
 
+`requirements.txt` lists the four packages the app needs to run. It is the file a host installs. `requirements-dev.txt` adds what building the data, training the models and running the tests need (pytest, rdkit, scikit-learn, xgboost, requests). The steps below install the dev file, which covers everything.
+
 Command Prompt:
 
 ```bat
 python -m venv venv
 venv\Scripts\activate.bat
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 PowerShell:
@@ -35,7 +37,7 @@ PowerShell:
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 ## Build the data and run
