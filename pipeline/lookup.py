@@ -45,22 +45,36 @@ class Checker:
         if len(q) < 2:
             return []
         out = []
-        gen = [g for g in self.generics if g.startswith(q)] + \
-              [g for g in self.generics if q in g and not g.startswith(q)]
-        # alias search: "paracetamol" -> acetaminophen, "aspirin" -> acetylsalicylic acid
-        for alias, canonical in SYNONYMS.items():
-            if alias.startswith(q) and canonical in self._generic_set and canonical not in gen:
-                gen.insert(0, canonical)
-        out += [f"{g} (generic)" for g in gen[:5]]
 
+        def add(label):
+            if label not in out:
+                out.append(label)
+
+        # 1. generics that start with the text, and aliases that start with it
+        #    ("paracetamol" -> acetaminophen, "aspirin" -> acetylsalicylic acid)
+        aliased = []
+        for alias, canonical in SYNONYMS.items():
+            if (alias.startswith(q) and canonical in self._generic_set
+                    and canonical not in aliased):
+                aliased.append(canonical)
+        for g in aliased + [g for g in self.generics if g.startswith(q)]:
+            add(f"{g} (generic)")
+        # 2. brands that start with the text
         starts = self.meds[self.meds["key"].str.startswith(q)]["brand"]
+        for b in starts:
+            add(b)
+        # 3. generics that contain the text
+        for g in self.generics:
+            if q in g:
+                add(f"{g} (generic)")
+        # 4. brands that contain the text
         has = self.meds[self.meds["key"].str.contains(q, regex=False)]["brand"]
-        for b in list(starts) + list(has):
-            if b not in out:
-                out.append(b)
-            if len(out) >= limit:
-                return out[:limit]
-        if len(out) < 3:  # typo fallback
+        for b in has:
+            add(b)
+        if len(out) >= limit:
+            return out[:limit]
+        # 5. typo fallback, only when there are few matches
+        if len(out) < 3:
             for key, score, _ in process.extract(q, self._keys, scorer=fuzz.WRatio, limit=limit):
                 if score >= 80:
                     b = self._by_key.loc[key, "brand"]
