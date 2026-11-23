@@ -30,6 +30,16 @@ CSS = f"""
     to   {{ opacity: 1; transform: translateY(0); }}
 }}
 
+@keyframes ddiGrow {{
+    from {{ transform: scaleX(0); }}
+    to   {{ transform: scaleX(1); }}
+}}
+
+@keyframes ddiFlip {{
+    from {{ opacity: 0; transform: perspective(600px) rotateX(-80deg); }}
+    to   {{ opacity: 1; transform: perspective(600px) rotateX(0deg); }}
+}}
+
 footer {{ visibility: hidden; }}
 
 h1, h2, h3 {{
@@ -87,6 +97,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 
 [data-testid="stAlert"] {{
     border-radius: 12px;
+    animation: ddiFade 0.4s ease both;
 }}
 [data-testid="stExpander"] {{
     border: 1px solid {BORDER};
@@ -131,6 +142,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.02em;
+    animation: ddiFlip 0.5s ease both;
 }}
 .pill-major    {{ background: #fee2e2; color: #b91c1c; }}
 .pill-moderate {{ background: #fef3c7; color: #b45309; }}
@@ -182,12 +194,9 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 
 .ddi-stats {{
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.9rem;
     margin: 0.6rem 0 1rem 0;
-}}
-@media (max-width: 700px) {{
-    .ddi-stats {{ grid-template-columns: repeat(2, 1fr); }}
 }}
 .ddi-stat {{
     background: #ffffff;
@@ -223,6 +232,162 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .stat-minor .ddi-stat-value    {{ color: #15803d; }}
 .stat-none     {{ border-left-color: #94a3b8; background: #f8fafc; }}
 .stat-none .ddi-stat-value     {{ color: #475569; }}
+.stat-teal     {{ border-left-color: {TEAL}; background: {TEAL_SOFT}; }}
+.stat-teal .ddi-stat-value     {{ color: {TEAL_DARK}; }}
+.stat-due      {{ border-left-color: #f59e0b; background: #fffbeb; }}
+.stat-due .ddi-stat-value      {{ color: #b45309; }}
+
+.ddi-dist {{
+    display: flex;
+    height: 30px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0 0 1.1rem 0;
+    box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.15);
+    transform-origin: left center;
+    animation: ddiGrow 0.7s ease both;
+}}
+.ddi-seg {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: filter 0.2s ease;
+}}
+.ddi-seg:hover {{ filter: brightness(1.12); }}
+.seg-major    {{ background: #dc2626; }}
+.seg-moderate {{ background: #f59e0b; }}
+.seg-minor    {{ background: #22c55e; }}
+.seg-none     {{ background: #94a3b8; }}
+.seg-nr       {{ background: #64748b; }}
+
+.ddi-progress-wrap {{
+    margin: 0.4rem 0 1rem 0;
+}}
+.ddi-progress-label {{
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: {MUTED};
+    margin-bottom: 0.35rem;
+}}
+.ddi-progress {{
+    height: 12px;
+    border-radius: 999px;
+    background: {BORDER};
+    overflow: hidden;
+}}
+.ddi-progress-fill {{
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, {TEAL}, #14b8a6);
+    transform-origin: left center;
+    animation: ddiGrow 0.8s ease both;
+}}
+
+.ddi-score {{
+    background: #ffffff;
+    border: 1px solid {BORDER};
+    border-left: 6px solid {TEAL};
+    border-radius: 14px;
+    padding: 1rem 1.3rem;
+    margin: 1rem 0 0.4rem 0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    animation: ddiFade 0.5s ease both;
+}}
+.ddi-score-row {{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}}
+.ddi-score-label {{
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: {MUTED};
+}}
+.ddi-score-value {{
+    font-size: 2rem;
+    font-weight: 800;
+    color: {TEAL_DARK};
+}}
+.ddi-score-pct {{
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: {TEAL};
+}}
+
+.ddi-flashcard {{
+    background: linear-gradient(135deg, #ffffff 0%, {TEAL_SOFT} 100%);
+    border: 1px solid {BORDER};
+    border-radius: 18px;
+    padding: 2rem 1.5rem;
+    margin: 0.6rem 0 1rem 0;
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: {INK};
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    animation: ddiFlip 0.55s ease both;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}}
+.ddi-flashcard:hover {{
+    transform: translateY(-3px);
+    box-shadow: 0 14px 32px rgba(15, 118, 110, 0.18);
+}}
+
+.ddi-topics {{
+    margin: 0.5rem 0 1rem 0;
+}}
+.ddi-trow {{
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 0.55rem;
+}}
+.ddi-tname {{
+    flex: 0 0 170px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: {INK};
+}}
+.ddi-ttrack {{
+    flex: 1;
+    height: 22px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    overflow: hidden;
+}}
+.ddi-tbar {{
+    display: flex;
+    height: 100%;
+    border-radius: 999px;
+    overflow: hidden;
+    transform-origin: left center;
+    animation: ddiGrow 0.7s ease both;
+}}
+.ddi-tright {{ background: #22c55e; transition: filter 0.2s ease; }}
+.ddi-twrong {{ background: #dc2626; transition: filter 0.2s ease; }}
+.ddi-tright:hover, .ddi-twrong:hover {{ filter: brightness(1.12); }}
+.ddi-tcount {{
+    flex: 0 0 90px;
+    font-size: 0.82rem;
+    color: {MUTED};
+}}
+.ddi-legend {{
+    font-size: 0.8rem;
+    color: {MUTED};
+    margin-bottom: 0.5rem;
+}}
+.ddi-dot {{
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin: 0 0.3rem 0 0.8rem;
+}}
 </style>
 """
 
@@ -259,6 +424,17 @@ STAT_CLASS = {
     "Moderate": "stat-moderate",
     "Minor": "stat-minor",
     "Unknown": "stat-none",
+    "No record": "stat-none",
+    "Cards started": "stat-teal",
+    "Due today": "stat-due",
+}
+
+SEG_CLASS = {
+    "Major": "seg-major",
+    "Moderate": "seg-moderate",
+    "Minor": "seg-minor",
+    "Unknown": "seg-none",
+    "No record": "seg-nr",
 }
 
 
@@ -272,3 +448,87 @@ def severity_stats(counts):
         for label, value in counts.items()
     )
     st.markdown('<div class="ddi-stats">' + cards + "</div>", unsafe_allow_html=True)
+
+
+def distribution_bar(counts):
+    """One stacked bar showing how the counts split. Hover a segment for its label."""
+    total = sum(int(v) for v in counts.values())
+    if total <= 0:
+        return
+    segs = "".join(
+        '<div class="ddi-seg ' + SEG_CLASS.get(label, "seg-none") + '" style="width:'
+        + "{:.2f}".format(100.0 * int(value) / total) + '%" title="'
+        + html.escape(str(label)) + ": " + str(int(value)) + '">'
+        + str(int(value)) + "</div>"
+        for label, value in counts.items()
+        if int(value) > 0
+    )
+    st.markdown('<div class="ddi-dist">' + segs + "</div>", unsafe_allow_html=True)
+
+
+def progress_bar(value, total, label):
+    pct = 0.0 if total <= 0 else max(0.0, min(100.0, 100.0 * value / total))
+    st.markdown(
+        '<div class="ddi-progress-wrap">'
+        '<div class="ddi-progress-label">' + html.escape(label) + "</div>"
+        '<div class="ddi-progress"><div class="ddi-progress-fill" style="width:'
+        + "{:.1f}".format(pct) + '%"></div></div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def score_card(correct, total):
+    pct = 0.0 if total <= 0 else 100.0 * correct / total
+    pct_text = "" if total <= 0 else str(round(pct)) + "%"
+    st.markdown(
+        '<div class="ddi-score">'
+        '<div class="ddi-score-row">'
+        '<div><div class="ddi-score-label">Score</div>'
+        '<div class="ddi-score-value">' + str(int(correct)) + " / " + str(int(total)) + "</div></div>"
+        '<div class="ddi-score-pct">' + pct_text + "</div>"
+        "</div>"
+        '<div class="ddi-progress"><div class="ddi-progress-fill" style="width:'
+        + "{:.1f}".format(pct) + '%"></div></div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def flashcard_face(text):
+    st.markdown('<div class="ddi-flashcard">' + html.escape(text) + "</div>", unsafe_allow_html=True)
+
+
+def topic_bars(rows):
+    """Right vs wrong answers per topic. rows come from build_dashboard."""
+    top = max([int(r["seen"]) for r in rows] + [0])
+    if top <= 0:
+        return
+    out = []
+    for r in rows:
+        seen = int(r["seen"])
+        if seen <= 0:
+            continue
+        wrong = min(int(r["wrong"]), seen)
+        right = seen - wrong
+        width = "{:.1f}".format(100.0 * seen / top)
+        out.append(
+            '<div class="ddi-trow">'
+            '<div class="ddi-tname">' + html.escape(str(r["topic"])) + "</div>"
+            '<div class="ddi-ttrack"><div class="ddi-tbar" style="width:' + width + '%">'
+            '<div class="ddi-tright" style="flex:' + str(right) + '" title="Right: '
+            + str(right) + '"></div>'
+            '<div class="ddi-twrong" style="flex:' + str(wrong) + '" title="Wrong: '
+            + str(wrong) + '"></div>'
+            "</div></div>"
+            '<div class="ddi-tcount">' + str(seen) + " answers</div>"
+            "</div>"
+        )
+    if not out:
+        return
+    legend = (
+        '<div class="ddi-legend">'
+        '<span class="ddi-dot" style="background:#22c55e;margin-left:0"></span>Right'
+        '<span class="ddi-dot" style="background:#dc2626"></span>Wrong</div>'
+    )
+    st.markdown('<div class="ddi-topics">' + legend + "".join(out) + "</div>", unsafe_allow_html=True)

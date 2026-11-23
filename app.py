@@ -22,7 +22,8 @@ from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
-from ui_theme import apply_theme, hero, severity_stats
+from ui_theme import (apply_theme, hero, severity_stats, distribution_bar, progress_bar,
+                      topic_bars, score_card, flashcard_face)
 apply_theme()
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
@@ -152,12 +153,14 @@ with tab_check:
                 graded = inter[inter["severity"] != "Unknown"]
                 ungraded = inter[inter["severity"] == "Unknown"]
                 st.subheader(f"{len(graded)} interaction(s) found")
-                severity_stats({
+                sev_counts = {
                     "Major": int((graded["severity"] == "Major").sum()),
                     "Moderate": int((graded["severity"] == "Moderate").sum()),
                     "Minor": int((graded["severity"] == "Minor").sum()),
                     "Unknown": len(ungraded),
-                })
+                }
+                severity_stats(sev_counts)
+                distribution_bar(sev_counts)
                 st.markdown(severity_summary(graded["severity"]), unsafe_allow_html=True)
                 for _, r in graded.iterrows():
                     with st.expander(
@@ -273,8 +276,15 @@ def render_case(r, pred=None):
     n_pairs = len(r["pairs"])
     word = "pair" if n_pairs == 1 else "pairs"
     st.subheader(f"{n_pairs} {word}")
-    st.write(f"Major {c['Major']}, Moderate {c['Moderate']}, Minor {c['Minor']}, "
-             f"Unknown {c['Unknown']}, no record {c['no_record']}")
+    case_counts = {
+        "Major": c["Major"],
+        "Moderate": c["Moderate"],
+        "Minor": c["Minor"],
+        "Unknown": c["Unknown"],
+        "No record": c["no_record"],
+    }
+    severity_stats(case_counts)
+    distribution_bar(case_counts)
     for pr in r["pairs"]:
         if pr["severity"] is None:
             lk = pred(pr["drug_a"], pr["drug_b"]) if pred else None
@@ -290,6 +300,7 @@ def render_case(r, pred=None):
         else:
             with st.expander(f"{BADGE[pr['severity']]}: {pr['drug_a']} + {pr['drug_b']}",
                              expanded=True):
+                st.markdown(severity_pill(pr["severity"]), unsafe_allow_html=True)
                 st.write(MEANING[pr["severity"]] + " " + DEFINED_BY)
     st.caption(r["limits"])
 
@@ -343,6 +354,8 @@ with tab_case:
                                 if st.checkbox("Check my ticks", key=f"rc_done_{rc_n}"):
                                     sc = score_ticks(rc_r, rc_ticked)
                                     st.write(f"Major pairs found: {len(sc['found'])} of {sc['n_major']}.")
+                                    progress_bar(len(sc["found"]), sc["n_major"],
+                                                 f"Major pairs found: {len(sc['found'])} of {sc['n_major']}")
                                     if sc["missed"]:
                                         st.warning("Missed Major: " + ", ".join(sc["missed"]))
                                     if sc["false_alarms"]:
@@ -425,7 +438,7 @@ with tab_cards:
             st.info("No card is available right now.")
         else:
             fa, fb, ftruth = fc_index[cid]
-            st.subheader(f"{fa.title()}  +  {fb.title()}")
+            flashcard_face(f"{fa.title()}  +  {fb.title()}")
             result = st.session_state["fc_result"]
             guess = st.radio("Severity DDInter gives this pair", ["Major", "Moderate", "Minor"],
                              horizontal=True, index=None, key=f"fc_guess_{cid}",
@@ -456,7 +469,10 @@ with tab_cards:
         st.subheader("Your progress")
         n_due = len([c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index])
         st.write(f"Cards started: {len(cards)}. Due today: {n_due}.")
+        severity_stats({"Cards started": len(cards), "Due today": n_due})
         if cards:
+            progress_bar(max(len(cards) - n_due, 0), len(cards),
+                         f"Up to date: {max(len(cards) - n_due, 0)} of {len(cards)}")
             try:
                 progress_text = export_progress(list(cards.values()))
             except ValueError as err:
@@ -504,6 +520,7 @@ with tab_cards:
                 "wrong rate": ("not enough data" if r["wrong_rate"] is None
                                else f"{round(100 * r['wrong_rate'])}%")} for r in rows])
             st.write("Weak topics, worst first. A topic needs 5 answers before it is ranked.")
+            topic_bars(rows)
             st.dataframe(table, hide_index=True)
 
 # --------------------------------------------------------------------- quiz
@@ -517,7 +534,7 @@ with tab_quiz:
             st.session_state["answered"] = None
 
         a, b, truth = st.session_state["quiz_q"]
-        st.subheader(f"{a.title()}  +  {b.title()}")
+        flashcard_face(f"{a.title()}  +  {b.title()}")
         guess = st.radio("Severity", ["Major", "Moderate", "Minor"], horizontal=True, index=None,
                          key=f"guess_{a}_{b}")
 
@@ -538,7 +555,7 @@ with tab_quiz:
                 st.rerun()
 
         s, t = st.session_state["score"]
-        st.caption(f"Score: {s} / {t}")
+        score_card(s, t)
 
 # -------------------------------------------------------------------- about
 with tab_about:
