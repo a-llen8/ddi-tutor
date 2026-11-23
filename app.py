@@ -17,10 +17,12 @@ from ml.sureness import SURENESS, answer
 from ml.progress import MAX_CARDS, export_progress, import_progress
 from ml.dashboard import build_dashboard
 from ml.common_deck import MIN_BRANDS, common_drugs, common_pairs, draw_question
+from ml.ui import CSS, NOTICE, severity_pill, severity_summary
 from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
+st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
 BADGE = {"Major": "🔴 Major", "Moderate": "🟠 Moderate", "Minor": "🟡 Minor", "Unknown": "⚪ Listed, not graded"}
 DEFINED_BY = "(DDInter's definition.)"
@@ -90,6 +92,7 @@ OUTSIDE_NOTE = ("Some drugs are outside the 8 DDInter class files used here. A p
 
 st.title("💊 DDI Tutor")
 st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
+st.markdown(f'<div class="ddi-notice">{NOTICE}</div>', unsafe_allow_html=True)
 
 tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"], key="main_tabs", on_change="rerun")
 
@@ -144,6 +147,7 @@ with tab_check:
                 graded = inter[inter["severity"] != "Unknown"]
                 ungraded = inter[inter["severity"] == "Unknown"]
                 st.subheader(f"{len(graded)} interaction(s) found")
+                st.markdown(severity_summary(graded["severity"]), unsafe_allow_html=True)
                 for _, r in graded.iterrows():
                     with st.expander(
                         f"{BADGE[r['severity']]}: {r['ingredient_1']} + {r['ingredient_2']}"
@@ -201,7 +205,7 @@ with tab_lookup:
             if name_a.strip() and name_b.strip():
                 lk = lookup(name_a, name_b, lk_ids, lk_sev, load_bands(), lk_cov)
                 if lk["status"] == "documented":
-                    st.write(BADGE[lk["severity"]])
+                    st.markdown(severity_pill(lk["severity"]), unsafe_allow_html=True)
                     st.write(MEANING[lk["severity"]] + " " + DEFINED_BY)
                     st.caption(lk["text"])
                 elif lk["status"] == "predicted":
@@ -423,6 +427,7 @@ with tab_cards:
                 st.session_state["fc_result"] = {"ok": right, "truth": ftruth, "sure": sure}
                 st.rerun()
             if result is not None:
+                st.markdown(severity_pill(result["truth"]), unsafe_allow_html=True)
                 (st.success if result["ok"] else st.error)(
                     f"{'Correct' if result['ok'] else 'Not quite'}: {result['truth']}. "
                     f"{MEANING[result['truth']]}")
@@ -511,6 +516,7 @@ with tab_quiz:
             st.rerun()
 
         if st.session_state["answered"] is not None:
+            st.markdown(severity_pill(truth), unsafe_allow_html=True)
             (st.success if st.session_state["answered"] else st.error)(
                 f"{'Correct' if st.session_state['answered'] else 'Not quite'}: {truth}. {MEANING[truth]}"
             )
