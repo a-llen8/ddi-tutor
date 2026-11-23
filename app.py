@@ -13,7 +13,7 @@ from ml.lookup_predictions import APP_PAIRS, BANDS, BAND_DRUGS, BandFile, load_p
 from ml.case_simulator import check_case, MAX_DRUGS
 from ml.random_case import BRANDS, load_context, random_case
 from ml.srs import new_card, review, due_cards
-from ml.progress import export_progress, import_progress
+from ml.progress import MAX_CARDS, export_progress, import_progress
 from ml.dashboard import build_dashboard
 from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
@@ -406,8 +406,14 @@ with tab_cards:
         n_due = len([c for c in due_cards(list(cards.values()), today) if c["card_id"] in fc_index])
         st.write(f"Cards started: {len(cards)}. Due today: {n_due}.")
         if cards:
-            st.download_button("Download progress", data=export_progress(list(cards.values())),
-                               file_name="ddi-tutor-progress.json", mime="application/json")
+            try:
+                progress_text = export_progress(list(cards.values()))
+            except ValueError as err:
+                limit = f" The limit is {MAX_CARDS} cards." if len(cards) > MAX_CARDS else ""
+                st.warning(f"Progress cannot be downloaded: {err}.{limit}")
+            else:
+                st.download_button("Download progress", data=progress_text,
+                                   file_name="ddi-tutor-progress.json", mime="application/json")
         up = st.file_uploader("Upload a progress file", type=["json"], key="fc_upload")
         if up is not None:
             marker = f"{up.name}:{up.size}"
