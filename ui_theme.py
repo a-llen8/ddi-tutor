@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 TEAL = "#0f766e"
@@ -35,7 +37,6 @@ h1, h2, h3 {{
     letter-spacing: -0.02em;
 }}
 
-/* Tabs */
 button[data-baseweb="tab"] {{
     font-weight: 600;
     padding: 0.7rem 1.1rem;
@@ -50,7 +51,6 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     color: {TEAL};
 }}
 
-/* Buttons */
 .stButton > button {{
     border-radius: 10px;
     font-weight: 600;
@@ -77,7 +77,6 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     box-shadow: 0 8px 20px rgba(15, 118, 110, 0.35);
 }}
 
-/* Inputs */
 [data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="textarea"] {{
     border-radius: 10px;
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -86,7 +85,6 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
 }}
 
-/* Alerts, expanders, metrics */
 [data-testid="stAlert"] {{
     border-radius: 12px;
 }}
@@ -113,7 +111,6 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
 }}
 
-/* Reusable classes for later parts */
 .ddi-card {{
     background: #ffffff;
     border: 1px solid {BORDER};
@@ -139,9 +136,75 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 .pill-moderate {{ background: #fef3c7; color: #b45309; }}
 .pill-minor    {{ background: #dcfce7; color: #15803d; }}
 .pill-none     {{ background: #e2e8f0; color: #475569; }}
+
+.ddi-hero {{
+    display: flex;
+    align-items: center;
+    gap: 1.4rem;
+    padding: 1.6rem 1.8rem;
+    margin-bottom: 1.2rem;
+    border-radius: 18px;
+    color: #ffffff;
+    background: linear-gradient(135deg, {TEAL_DARK} 0%, {TEAL} 55%, #14b8a6 100%);
+    box-shadow: 0 12px 30px rgba(15, 118, 110, 0.28);
+    animation: ddiFade 0.6s ease both;
+}}
+.ddi-hero-icon {{
+    font-size: 2.6rem;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    padding: 0.8rem 0.95rem;
+}}
+.ddi-hero-title {{
+    margin: 0;
+    padding: 0;
+    color: #ffffff;
+    font-size: 2.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}}
+.ddi-hero-sub {{
+    margin: 0.25rem 0 0.7rem 0;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1rem;
+}}
+.ddi-badge {{
+    display: inline-block;
+    margin-right: 0.5rem;
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    font-size: 0.78rem;
+    font-weight: 600;
+}}
 </style>
 """
 
 
 def apply_theme():
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def hero(title, subtitle, badges=None):
+    badge_html = "".join(
+        '<span class="ddi-badge">' + html.escape(b) + "</span>" for b in (badges or [])
+    )
+    block = (
+        '<div class="ddi-hero">'
+        '<div class="ddi-hero-icon">&#128138;</div>'
+        "<div>"
+        '<h1 class="ddi-hero-title">' + html.escape(title) + "</h1>"
+        '<p class="ddi-hero-sub">' + html.escape(subtitle) + "</p>"
+        "<div>" + badge_html + "</div>"
+        "</div>"
+        "</div>"
+    )
+    st.markdown(block, unsafe_allow_html=True)
+
+
+def stat_cards(items):
+    cols = st.columns(len(items))
+    for col, (label, value) in zip(cols, items):
+        col.metric(label, value)

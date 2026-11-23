@@ -22,7 +22,7 @@ from ml.spot_pairs import neutral_pairs, score_ticks
 from ml.lookup_predictions import COVERAGE, covered_id_set, load_coverage, lookup, resolve
 
 st.set_page_config(page_title="DDI Tutor", page_icon="💊", layout="wide")
-from ui_theme import apply_theme
+from ui_theme import apply_theme, hero
 apply_theme()
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
@@ -92,8 +92,11 @@ def lookalike_ready():
 OUTSIDE_NOTE = ("Some drugs are outside the 8 DDInter class files used here. A pair of two "
                 "such drugs can never show as documented, and gets no band.")
 
-st.title("💊 DDI Tutor")
-st.caption("A drug-drug interaction learning tool for medical students. Educational use only.")
+hero(
+    "DDI Tutor",
+    "A drug-drug interaction learning tool for medical students.",
+    ["Educational use only", "DDInter data"],
+)
 st.markdown(f'<div class="ddi-notice">{NOTICE}</div>', unsafe_allow_html=True)
 
 tab_check, tab_lookup, tab_case, tab_cards, tab_quiz, tab_about = st.tabs(["Interaction checker", "Pair lookup", "Case simulator", "Flashcards", "Quiz", "About & limits"], key="main_tabs", on_change="rerun")
